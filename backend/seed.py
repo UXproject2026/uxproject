@@ -1,18 +1,27 @@
+# Utility script to populate the local MongoDB with sample data.
+# This is used to ensure the application has visible content during development
+# even if the Spektrix API is unreachable or sync hasn't run.
+
 from pymongo import MongoClient
 
 def seed_database():
+    """
+    Clears the existing 'events' collection and inserts a fresh set of 
+    Figma-inspired theatre performances for testing.
+    """
+    # --- DATABASE CONNECTION ---
     client = MongoClient('mongodb://localhost:27017/')
     db = client['theatre_leeds']
     events_collection = db['events']
 
-    # Clear existing data
+    # Clear existing data to avoid duplicates during development
     events_collection.delete_many({})
 
-    # Sample data based on Figma screenshots
+    # Sample data mapping closely to the designs and high-fidelity prototypes.
     events = [
         # Opera Category
         {
-            "title": "The Sounds f Music",
+            "title": "The Sounds of Music",
             "venue": "Grand Theatre",
             "description": "The classic musical story of the Von Trapp family.",
             "date": "Tuesday 18th March",

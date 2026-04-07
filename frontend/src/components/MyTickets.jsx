@@ -1,6 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 
+/**
+ * SeatingPlanPopup Component: A specialized component that displays an SVG map
+ * with the user's booked seats highlighted.
+ * 
+ * SEATING PLAN LOGIC (Highlighting):
+ * 1. Fetches the full seating plan for the event.
+ * 2. Flattens nested venue areas to find all available seats.
+ * 3. Compares the user's booked seat identifiers (e.g., "A12") with the seats in the map.
+ * 4. Highlights the matching seats using a distinct color.
+ */
 const SeatingPlanPopup = ({ eventId, bookedSeats, onClose }) => {
   const [planData, setPlanData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -12,11 +22,14 @@ const SeatingPlanPopup = ({ eventId, bookedSeats, onClose }) => {
         if (data.error || !data.areas || data.areas.length === 0) {
           setPlanData(null);
         } else {
-          // Helper to flatten nested areas and find all seats
           const allFoundAreas = [];
+          
+          /**
+           * Recursively processes areas to find those with seats.
+           * Calculates dynamic viewBox for each area to ensure proper SVG scaling.
+           */
           const processArea = (area) => {
             if (area.seats && area.seats.length > 0) {
-              // Calculate viewBox for SVG
               let minX = 10000, minY = 10000, maxX = 0, maxY = 0;
               area.seats.forEach(seat => {
                 if (seat.x < minX) minX = seat.x;
@@ -34,21 +47,24 @@ const SeatingPlanPopup = ({ eventId, bookedSeats, onClose }) => {
               area.areas.forEach(processArea);
             }
           };
+          
           data.areas.forEach(processArea);
 
-          // Find the areas where the user has seats
+          // Normalization logic to match seat names (e.g., handling spaces and casing)
           const normalizedBooked = bookedSeats.map(s => s.trim().toUpperCase());
           const isMatch = (seatName, seatRow, seatNum) => {
-            const sName = seatName.toUpperCase();
+            const sName = (seatName || "").toUpperCase();
             const sRow = (seatRow || "").toUpperCase();
             const sNum = String(seatNum || "");
-            return normalizedBooked.some(nb => 
-              sName === nb || 
-              (sRow + sNum === nb.replace(/\s+/g, '')) || 
-              nb.includes(sName)
-            );
+            const sConcat = (sRow + sNum).replace(/\s+/g, '');
+            
+            return normalizedBooked.some(nb => {
+              const nbClean = nb.replace(/\s+/g, '');
+              return sName === nb || sConcat === nbClean;
+            });
           };
 
+          // Only show areas that contain at least one of the user's booked seats
           const relevantAreas = allFoundAreas.filter(area => 
             area.seats?.some(seat => isMatch(seat.name, seat.row, seat.number))
           );
@@ -60,8 +76,23 @@ const SeatingPlanPopup = ({ eventId, bookedSeats, onClose }) => {
       .catch(() => setLoading(false));
   }, [eventId, bookedSeats]);
 
+  // Utility to reuse the matching logic in the render phase
+  const isMatch = (seatName, seatRow, seatNum, normalizedBooked) => {
+    const sName = (seatName || "").toUpperCase();
+    const sRow = (seatRow || "").toUpperCase();
+    const sNum = String(seatNum || "");
+    const sConcat = (sRow + sNum).replace(/\s+/g, '');
+    
+    return normalizedBooked.some(nb => {
+      const nbClean = nb.replace(/\s+/g, '');
+      return sName === nb || sConcat === nbClean;
+    });
+  };
+
   if (loading) return <div className="plan-popup-loading">Loading map...</div>;
   if (!planData || planData.areas.length === 0) return <div className="plan-popup-empty">Map unavailable</div>;
+
+  const normalizedBooked = bookedSeats.map(s => s.trim().toUpperCase());
 
   return (
     <div className="seating-plan-popup-content visual-map-popup">
@@ -76,14 +107,7 @@ const SeatingPlanPopup = ({ eventId, bookedSeats, onClose }) => {
           <div className="svg-wrapper" style={{ background: 'var(--bg-subtle)', borderRadius: '8px', padding: '10px' }}>
             <svg viewBox={area.viewBox} width="100%" height="auto" style={{ display: 'block' }}>
               {area.seats?.map(seat => {
-                // Highlighting logic
-                const normalizedBooked = bookedSeats.map(s => s.trim().toUpperCase());
-                const isBooked = normalizedBooked.some(nb => 
-                  seat.name.toUpperCase() === nb || 
-                  ((seat.row || "") + (seat.number || "")).toUpperCase() === nb.replace(/\s+/g, '') ||
-                  nb.includes(seat.name.toUpperCase())
-                );
-
+                const isBooked = isMatch(seat.name, seat.row, seat.number, normalizedBooked);
                 return (
                   <circle
                     key={seat.id} cx={seat.x} cy={seat.y} r="10"
@@ -105,11 +129,20 @@ const SeatingPlanPopup = ({ eventId, bookedSeats, onClose }) => {
   );
 };
 
+/**
+ * MyTickets Component: Lists all bookings associated with the user.
+ * Organizes tickets into 'Upcoming' and 'Archive' sections based on the event date.
+ */
 const MyTickets = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  /**
+   * API FETCHING:
+   * Retrieves all bookings from the API.
+   * In a real app, the backend would filter these based on the authenticated user's session.
+   */
   useEffect(() => {
     fetch('/api/bookings')
       .then(res => res.json())
@@ -125,6 +158,9 @@ const MyTickets = () => {
 
   if (loading) return <div className="loading">Loading tickets...</div>;
 
+  /**
+   * Helper to convert "Monday 15 March" strings into Date objects for comparison.
+   */
   const parseEventDate = (dateStr) => {
     try {
       if (!dateStr || dateStr === "Date TBC") return new Date(2099, 0, 1);
@@ -134,7 +170,6 @@ const MyTickets = () => {
       const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
       const month = months.indexOf(monthStr);
       return new Date(2026, month, day);
-    // eslint-disable-next-line no-unused-vars
     } catch (e) {
       return new Date(2099, 0, 1);
     }
@@ -145,6 +180,7 @@ const MyTickets = () => {
 
   const allValidBookings = bookings.filter(b => b.event);
 
+  // Split bookings into Upcoming and Past categories
   const upcoming = allValidBookings
     .filter(b => parseEventDate(b.event.date) >= today)
     .sort((a, b) => parseEventDate(a.event.date) - parseEventDate(b.event.date));
@@ -153,16 +189,25 @@ const MyTickets = () => {
     .filter(b => parseEventDate(b.event.date) < today)
     .sort((a, b) => parseEventDate(b.event.date) - parseEventDate(a.event.date));
 
+  /**
+   * TicketCard Component: Displays individual booking details.
+   * Includes a QR code generator and a conditional seating plan trigger.
+   */
   const TicketCard = ({ booking, isArchived }) => {
     const [showPopup, setShowPopup] = useState(false);
     const popupRef = useRef(null);
     
+    // Normalize seat data into an array for consistent processing
     const bookedSeatsArray = typeof booking.seat === 'string' 
       ? booking.seat.split(',').map(s => s.trim()) 
       : (Array.isArray(booking.seat) ? booking.seat : [booking.seat]);
 
     const isGA = booking.seat?.toString().includes("General Admission");
 
+    /**
+     * UI LOGIC: 
+     * Handles closing the seating map popup when clicking outside of it.
+     */
     useEffect(() => {
       const handleClickOutside = (event) => {
         if (popupRef.current && !popupRef.current.contains(event.target)) {
@@ -190,6 +235,7 @@ const MyTickets = () => {
           <p style={{ color: '#666', marginBottom: '15px' }}>{booking.event?.venue}</p>
           {!isArchived && (
             <div className="qr-container">
+              {/* Uses a public API to generate a dynamic QR code based on the booking reference */}
               <img src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${booking.bookingRef}`} alt="Ticket QR Code" />
             </div>
           )}
@@ -221,6 +267,7 @@ const MyTickets = () => {
               )}
             </div>
 
+            {/* SEATING MAP POPUP: Only shown for reserved seating and upcoming events */}
             {showPopup && !isArchived && (
               <div className="seating-plan-popup" ref={popupRef}>
                 <SeatingPlanPopup 

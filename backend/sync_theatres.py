@@ -1,3 +1,6 @@
+# Script to synchronize theatre event data from Spektrix API to local MongoDB.
+# This handles fetching, mapping, and cleaning event data for Leeds venues.
+
 import requests
 from pymongo import MongoClient
 from datetime import datetime
@@ -5,11 +8,12 @@ import json
 import time
 import os
 
-# MongoDB connection
+# --- DATABASE CONNECTION ---
 client = MongoClient('mongodb://localhost:27017/')
 db = client['theatre_leeds']
 events_collection = db['events']
 
+# Configuration for the different Spektrix clients (venues) in Leeds.
 VENUES_CONFIG = {
     "leedsheritagetheatres": {
         "default_name": "Leeds Grand Theatre",
@@ -25,7 +29,8 @@ VENUES_CONFIG = {
     }
 }
 
-# Load the Knowledge Base of researched descriptions
+# --- DATA TRANSFORMATION: KNOWLEDGE BASE ---
+# Load a researched 'Knowledge Base' to provide high-quality descriptions for known shows.
 KB_PATH = os.path.join(os.path.dirname(__file__), 'descriptions_kb.json')
 KNOWLEDGE_BASE = {}
 if os.path.exists(KB_PATH):
@@ -33,10 +38,16 @@ if os.path.exists(KB_PATH):
         KNOWLEDGE_BASE = json.load(f)
 
 def build_smart_description(ev, venue_name, category):
+    """
+    Constructs a helpful description if the API provides none or poor quality text.
+    Uses custom attributes (Director, Stars) or falls back to a template.
+    """
     title = ev.get('name')
+    # Use high-quality pre-written description if available
     if title in KNOWLEDGE_BASE:
         return KNOWLEDGE_BASE[title]
     
+    # Try to extract cast/crew details from Spektrix attributes
     director = ev.get('attribute_Director')
     stars = [ev.get(f'attribute_FeaturingStars{i}') for i in range(1, 4)]
     stars = [s for s in stars if s]
@@ -51,6 +62,7 @@ def build_smart_description(ev, venue_name, category):
     if parts:
         attr_desc = f"A spectacular {category} production at {venue_name}, {', '.join(parts)}."
     
+    # Final fallback if no attributes are present
     if not attr_desc:
         fallbacks = [
             f"Experience the magic of {title} live at the {venue_name}. A must-see {category} event in the heart of Leeds.",
@@ -62,6 +74,10 @@ def build_smart_description(ev, venue_name, category):
     return attr_desc
 
 def map_category(ev):
+    """
+    Heuristically maps Spektrix events to frontend categories (Opera, Live Music, Ballet).
+    Searches across multiple metadata fields for keywords.
+    """
     text_to_search = [
         ev.get('name', ''),
         ev.get('description', ''),
@@ -81,14 +97,21 @@ def map_category(ev):
     if any(kw in blob for kw in ['opera', 'musical', 'verdi', 'puccini', 'mozart', 'wagner', 'libretto', 'soprano', 'tenor']):
         return 'Opera'
 
+    # Fallback rotation if no keywords match
     categories = ['Opera', 'Live Music', 'Ballet']
     return categories[len(ev.get('name', '')) % 3]
 
 def sync_theatre_data():
+    """
+    --- SPEKTRIX API INTEGRATION ---
+    Main loop that iterates through all configured Leeds venues, fetches their 
+    latest events, and updates the local MongoDB.
+    """
     print("Finalizing sync for 4 active Leeds venues...")
     synced_count = 0
     
     for client_id, config in VENUES_CONFIG.items():
+        # Spektrix public API endpoint for events
         url = f"https://system.spektrix.com/{client_id}/api/v3/events"
         try:
             print(f"Fetching from {client_id}...")
@@ -102,28 +125,33 @@ def sync_theatre_data():
                 print(f"Found {len(events)} events for {client_id}")
                 
                 for ev in events:
+                    # Determine the specific venue name (some clients have multiple stages)
                     venue_name = config['default_name']
                     if config['use_attribute_venue']:
                         attr_venue = ev.get('attribute_Venue')
                         if attr_venue:
                             venue_name = attr_venue
 
+                    # Date transformation: Convert ISO strings to friendly display formats
                     raw_date = ev.get('firstInstanceDateTime')
                     display_date, display_time = "Date TBC", "18:00"
                     if raw_date:
                         try:
                             dt = datetime.strptime(raw_date.split('.')[0], "%Y-%m-%dT%H:%M:%S")
-                            display_date, display_time = dt.strftime("%A %d %B")
+                            display_date = dt.strftime("%A %d %B")
                             display_time = dt.strftime("%H:%M")
                         except: pass
 
                     category = map_category(ev)
+                    
+                    # Description cleaning: remove empty or system-generated IDs
                     api_desc = ev.get('description') or ev.get('htmlDescription')
                     if api_desc and ('<div id>' in api_desc or len(api_desc) < 20):
                         api_desc = None
                     
                     final_desc = api_desc or build_smart_description(ev, venue_name, category)
 
+                    # Create a flat schema optimized for the React frontend
                     mapped_event = {
                         "title": ev.get('name'),
                         "venue": venue_name,
@@ -138,6 +166,9 @@ def sync_theatre_data():
                         "clientName": client_id
                     }
                     
+                    # --- MONGODB UPSERT ---
+                    # Update the record if title + venue match, otherwise insert new.
+                    # This prevents duplicate events during repeated sync runs.
                     events_collection.update_one(
                         {"title": mapped_event['title'], "venue": mapped_event['venue']},
                         {"$set": mapped_event},
@@ -148,7 +179,7 @@ def sync_theatre_data():
                 print(f"Failed to fetch from {client_id}: {response.status_code}")
         except Exception as e:
             print(f"Error syncing {client_id}: {e}")
-        time.sleep(1)
+        time.sleep(1) # Polite delay between client requests
 
     print(f"Sync complete. Total processed: {synced_count}")
 

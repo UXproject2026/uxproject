@@ -3,11 +3,25 @@ import { Link } from 'react-router-dom';
 import EventCard from './EventCard';
 import heroImage from '../assets/hero.png';
 
+/**
+ * Home Component: The landing page of the application.
+ * Displays featured events by category and introductory content.
+ */
 const Home = () => {
+  // STATE MANAGEMENT: 
+  // - events: Stores the full list of events fetched from the API.
+  // - loading: Tracks the API request status to show/hide loading indicators.
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Helper to parse date string into a sortable number
+  /**
+   * Helper to parse custom date strings (e.g., "Monday 15 March") into a sortable timestamp.
+   * This is crucial for sorting events chronologically on the client side.
+   * 
+   * @param {string} dateStr - The date string from the backend.
+   * @param {string} timeStr - The time string (optional).
+   * @returns {number} - Unix timestamp or Infinity if invalid.
+   */
   const parseEventDate = (dateStr, timeStr) => {
     if (!dateStr || dateStr.includes('TBC')) return Infinity;
     
@@ -29,6 +43,7 @@ const Home = () => {
       let year = now.getFullYear();
       const date = new Date(year, month, day);
       
+      // If the date has already passed this year, assume it's for next year
       if (date < now && month < now.getMonth()) {
         date.setFullYear(year + 1);
       }
@@ -44,26 +59,41 @@ const Home = () => {
     }
   };
 
+  /**
+   * API FETCHING:
+   * Fetches all events from the backend on component mount.
+   * Includes error handling to prevent the app from crashing on network failure.
+   */
   useEffect(() => {
     fetch('/api/events')
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to fetch events');
+        return res.json();
+      })
       .then(data => {
         setEvents(data);
         setLoading(false);
       })
       .catch(err => {
-        console.error(err);
+        console.error('Error fetching events:', err);
         setLoading(false);
       });
   }, []);
 
   const categories = ['Opera', 'Live Music', 'Ballet'];
 
-  // Helper function to get events for each category, prioritizing those with real images
+  /**
+   * FEATURED EVENTS LOGIC:
+   * Filters and sorts events for display in category sections.
+   * Prioritizes events with 'real' images to ensure the homepage looks polished.
+   * 
+   * @param {string} category - The category to filter by.
+   * @param {number} count - Number of events to return.
+   */
   const getFeaturedEvents = (category, count = 4) => {
     const filtered = events.filter(e => e.category === category);
     
-    // Sort all filtered events by date first
+    // Sort all filtered events by date first (soonest first)
     const sortedByDate = [...filtered].sort((a, b) => {
       const dateA = parseEventDate(a.date, a.time);
       const dateB = parseEventDate(b.date, b.time);
@@ -74,19 +104,22 @@ const Home = () => {
     const withImages = sortedByDate.filter(e => e.hasRealImage);
     const withoutImages = sortedByDate.filter(e => !e.hasRealImage);
     
-    // If we have enough with images, return the first 'count' (which are the soonest)
+    // Combine lists, prioritizing those with images
     if (withImages.length >= count) {
       return withImages.slice(0, count);
     }
     
-    // Otherwise, fill the remaining slots with shows without images (also soonest first)
     const remaining = count - withImages.length;
     return [...withImages, ...withoutImages.slice(0, remaining)];
   };
 
   return (
     <div className="home-container">
-      {/* Hero Section */}
+      {/* 
+        RESPONSIVE HERO SECTION:
+        Uses a background image with an overlay for readability.
+        CSS handles the centering and scaling of the hero content across devices.
+      */}
       <section className="hero-section">
         <div className="hero-overlay">
           <div className="hero-content">
@@ -100,7 +133,10 @@ const Home = () => {
         <img src={heroImage} alt="ScenePass Hero" className="hero-bg-image" />
       </section>
 
-      {/* About Us Section */}
+      {/* 
+        ABOUT US SECTION:
+        Demonstrates a responsive 2-column grid layout that stacks vertically on mobile.
+      */}
       <section className="about-section">
         <div className="about-grid">
           <div className="about-text">
@@ -126,7 +162,12 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Featured Shows Sections */}
+      {/* 
+        FEATURED SHOWS:
+        Dynamically generates sections for each category.
+        The '.event-list' CSS class uses CSS Grid with 'grid-template-columns: repeat(auto-fill, minmax(280px, 1fr))'
+        to provide an inherently responsive layout.
+      */}
       {categories.map(category => (
         <section key={category} className="featured-section">
           <div className="section-header">

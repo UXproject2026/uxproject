@@ -937,14 +937,13 @@ body {
 .view-map-btn:hover {
   background: var(--medium-lavender);
   color: white;
-}
-
 .seating-plan-popup {
   position: absolute;
   bottom: 100%;
   left: 50%;
   transform: translateX(-50%);
-  width: 300px;
+  width: 320px;
+  max-height: 400px;
   background: white;
   border: 1px solid var(--medium-lavender);
   border-radius: var(--radius-md);
@@ -954,9 +953,15 @@ body {
   margin-bottom: 16px;
   pointer-events: auto;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
-.popup-header {
+.seating-plan-popup-content {
+  padding: 16px;
+  overflow-y: auto;
+  flex: 1;
+}
   background: var(--soft-lavender);
   padding: 10px 16px;
   border-bottom: 1px solid var(--medium-lavender);

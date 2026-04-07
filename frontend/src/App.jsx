@@ -15,20 +15,30 @@ import ScrollToTop from './components/ScrollToTop'
 import ChatWidget from './components/ChatWidget'
 import './App.css'
 
+/**
+ * TopNav Component: Handles the main navigation bar and authentication state.
+ * 
+ * AUTHENTICATION MANAGEMENT:
+ * Uses localStorage to persist the 'isLoggedIn' state across page refreshes.
+ * The component checks this on mount and updates the UI accordingly.
+ */
 const TopNav = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const navigate = useNavigate();
 
+  // On mount, check if the user is logged in by reading from localStorage
   useEffect(() => {
     setIsLoggedIn(localStorage.getItem('isLoggedIn') === 'true');
   }, []);
 
+  // Clears user data from localStorage and resets the auth state on logout
   const handleLogout = () => {
     localStorage.removeItem('isLoggedIn');
     localStorage.removeItem('userName');
     localStorage.removeItem('userEmail');
     setIsLoggedIn(false);
     navigate('/signin');
+    // Force reload to ensure all components reset their state based on cleared storage
     window.location.reload();
   };
 
@@ -117,6 +127,18 @@ const Footer = () => {
   );
 };
 
+/**
+ * Main App Component: Sets up the routing structure of the application.
+ * 
+ * CLIENT-SIDE ROUTING:
+ * Uses React Router's <BrowserRouter> (as Router) to enable dynamic, 
+ * client-side navigation without full page reloads.
+ * 
+ * RESPONSIVE LAYOUT:
+ * The app structure utilizes a flexbox container ('app-container') with 
+ * a main 'content' area that grows to fill available space, ensuring 
+ * the footer stays at the bottom on all screen sizes.
+ */
 function App() {
   return (
     <Router>
@@ -125,6 +147,7 @@ function App() {
         <TopNav />
         <main className="content">
           <Routes>
+            {/* Defined application routes and their corresponding components */}
             <Route path="/" element={<Home />} />
             <Route path="/events/:eventId" element={<EventDetails />} />
             <Route path="/payment" element={<PaymentPage />} />

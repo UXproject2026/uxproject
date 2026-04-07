@@ -1,9 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 
+/**
+ * EventDetails Component: Displays detailed information about a specific show
+ * and handles the ticket selection process (Reserved Seating or General Admission).
+ */
 const EventDetails = () => {
   const { eventId } = useParams();
   const navigate = useNavigate();
+
+  // STATE MANAGEMENT:
+  // - event: Basic event info (title, venue, etc.)
+  // - selectedSeats: Array of seat objects currently chosen by the user
+  // - planData: The seating map structure (areas and seat coordinates)
+  // - gaCount: Simple counter for General Admission tickets
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedSeats, setSelectedSeats] = useState([]);
@@ -11,6 +21,10 @@ const EventDetails = () => {
   const [loadingPlan, setLoadingPlan] = useState(true);
   const [gaCount, setGaCount] = useState(0);
 
+  /**
+   * API FETCHING:
+   * Fetches event details and then triggers seating plan retrieval.
+   */
   useEffect(() => {
     fetch(`/api/events/${eventId}`)
       .then(res => res.json())
@@ -29,6 +43,15 @@ const EventDetails = () => {
       });
   }, [eventId]);
 
+  /**
+   * SEATING PLAN LOGIC:
+   * Fetches the geometric data for the venue.
+   * 
+   * COORDINATE CALCULATION & SVG MAPPING:
+   * To display the SVG map correctly, we must calculate the bounding box ('viewBox')
+   * of the seats in each area. This ensures the map is zoomed appropriately to fit 
+   * the actual seats, regardless of their absolute coordinates in the venue database.
+   */
   const fetchSeatingPlan = (id) => {
     fetch(`/api/events/${id}/seating-plan`)
       .then(res => res.json())
@@ -42,6 +65,8 @@ const EventDetails = () => {
         const processedAreas = data.areas?.map(area => {
           let minX = 10000, minY = 10000, maxX = 0, maxY = 0;
           let hasSeats = false;
+
+          // Iterate through seats to find the boundaries of the area
           area.seats?.forEach(seat => {
             hasSeats = true;
             if (seat.x < minX) minX = seat.x;
@@ -49,10 +74,13 @@ const EventDetails = () => {
             if (seat.x > maxX) maxX = seat.x;
             if (seat.y > maxY) maxY = seat.y;
           });
+
+          // Apply padding so seats aren't cut off by the SVG edge
           const padding = 30;
           return {
             ...area,
             hasSeats,
+            // Calculate dynamic viewBox: "startX startY width height"
             viewBox: hasSeats ? `${minX - padding} ${minY - padding} ${(maxX - minX) + padding * 2} ${(maxY - minY) + padding * 2}` : null
           };
         }) || [];
@@ -66,6 +94,10 @@ const EventDetails = () => {
       });
   };
 
+  /**
+   * SELECTION LOGIC:
+   * Toggles a seat in the selectedSeats array.
+   */
   const toggleSeat = (seat) => {
     const seatId = seat.id;
     if (selectedSeats.find(s => s.id === seatId)) {
@@ -75,11 +107,15 @@ const EventDetails = () => {
     }
   };
 
+  /**
+   * GENERAL ADMISSION LOGIC:
+   * For non-reserved shows, we simply track a count.
+   * To reuse the 'selectedSeats' footer logic, we create mock seat objects.
+   */
   const handleGaChange = (amount) => {
     const newCount = Math.max(0, gaCount + amount);
     setGaCount(newCount);
     
-    // Sync with selectedSeats for the footer logic
     if (newCount === 0) {
       setSelectedSeats([]);
     } else {
@@ -96,6 +132,8 @@ const EventDetails = () => {
       alert('Please select at least one ticket');
       return;
     }
+    // NAVIGATION WITH STATE:
+    // Passes the selection to the payment page via React Router's state object.
     navigate('/payment', { 
       state: { 
         event, 
@@ -108,6 +146,7 @@ const EventDetails = () => {
   if (loading) return <div className="loading">Loading event details...</div>;
   if (!event) return <div className="error">Event not found!</div>;
 
+  // Determine if this is a reserved seating event based on plan data
   const isReserved = planData && planData.areas?.some(a => a.hasSeats);
 
   return (
@@ -155,12 +194,14 @@ const EventDetails = () => {
                Checking ticket availability...
             </div>
           ) : isReserved ? (
+            /* RESERVED SEATING UI: Iterates through SVG areas */
             <div className="multi-area-plan">
               <p style={{ textAlign: 'center', color: 'var(--text-muted)', marginBottom: '30px' }}>Select your seats from the map below:</p>
               {planData.areas.filter(a => a.hasSeats).map((area) => (
                 <div key={area.id} className="plan-area-container" style={{ marginBottom: '40px' }}>
                   <h4 style={{ textAlign: 'center', marginBottom: '15px', fontWeight: '700' }}>{area.name}</h4>
                   <div className="svg-wrapper" style={{ background: 'var(--bg-subtle)', borderRadius: 'var(--radius-md)', padding: '20px', border: '1px solid var(--border-subtle)' }}>
+                    {/* SVG RENDERER: Uses dynamic viewBox for auto-scaling */}
                     <svg viewBox={area.viewBox} width="100%" height="auto" style={{ maxHeight: '400px', display: 'block' }}>
                       {area.seats?.map(seat => {
                         const isSelected = selectedSeats.find(s => s.id === seat.id);
@@ -180,6 +221,7 @@ const EventDetails = () => {
               ))}
             </div>
           ) : (
+            /* GENERAL ADMISSION UI: Simple quantity selector */
             <div className="ga-selection" style={{ 
               textAlign: 'center', 
               padding: '60px', 
@@ -226,6 +268,11 @@ const EventDetails = () => {
           )}
         </div>
         
+        {/* 
+          STICKY FOOTER:
+          Provides immediate feedback on selection and a clear call-to-action.
+          Remains fixed at the bottom of the viewport for easy access.
+        */}
         <div className="sticky-footer">
           <div className="selection-summary">
             <span>{selectedSeats.length} {selectedSeats.length === 1 ? 'Ticket' : 'Tickets'} Selected</span>
