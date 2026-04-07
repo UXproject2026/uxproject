@@ -134,6 +134,7 @@ const MyTickets = () => {
       const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
       const month = months.indexOf(monthStr);
       return new Date(2026, month, day);
+    // eslint-disable-next-line no-unused-vars
     } catch (e) {
       return new Date(2099, 0, 1);
     }
