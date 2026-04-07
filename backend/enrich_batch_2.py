@@ -1,3 +1,16 @@
+"""
+Data Enrichment Script: Event Descriptions (Batch 2)
+---------------------------------------------------
+This script performs a second batch of data enrichment, adding detailed descriptions 
+to another set of events in the database.
+
+Interaction with MongoDB:
+- Connects to the 'theatre_leeds' database.
+- Targets events in the 'events' collection using title-based regex matching.
+- Updates the 'description' field for matching records, including handling for special 
+  characters like '?' in event titles.
+"""
+
 from pymongo import MongoClient
 
 def enrich_batch_2():

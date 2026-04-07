@@ -1,28 +1,39 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+/**
+ * AccountPage Component
+ * Manages user profile, saved payment methods, purchase history, and accessibility settings.
+ */
 const AccountPage = () => {
   const navigate = useNavigate();
   
-  // Profile State
+  // --- Profile State ---
+  // Tracks whether the user is in "Edit Mode" for their profile info
   const [isEditing, setIsEditing] = useState(false);
+  // Profile data initialized from localStorage or defaults
   const [profile, setProfile] = useState({
     name: localStorage.getItem('userName') || "University Project User",
     email: localStorage.getItem('userEmail') || "user@example.edu"
   });
 
-  // Card State
+  // --- Payment State ---
+  // Saved card info retrieved from localStorage
   const [savedCard, setSavedCard] = useState(
     JSON.parse(localStorage.getItem('savedCard')) || null
   );
+  // Controls visibility of the "Add Card" form
   const [isAddingCard, setIsAddingCard] = useState(false);
+  // Local state for the add-card form inputs
   const [newCard, setNewCard] = useState({ number: '', expiry: '', cvv: '' });
 
-  // Receipts State
+  // --- Receipts State ---
+  // Stores the list of previous bookings fetched from the API
   const [bookings, setBookings] = useState([]);
   const [loadingReceipts, setLoadingReceipts] = useState(true);
 
-  // Accessibility State
+  // --- Accessibility State ---
+  // Persisted accessibility preferences (Text size, contrast, etc.)
   const [accessSettings, setAccessSettings] = useState({
     textScaling: localStorage.getItem('access_textScaling') === 'true',
     highContrast: localStorage.getItem('access_highContrast') === 'true',
@@ -30,6 +41,10 @@ const AccountPage = () => {
     reducedMotion: localStorage.getItem('access_reducedMotion') === 'true'
   });
 
+  /**
+   * Effect: Accessibility Applier
+   * Syncs the accessSettings state with HTML body classes and localStorage.
+   */
   useEffect(() => {
     const body = document.body;
     accessSettings.textScaling ? body.classList.add('accessibility-mode') : body.classList.remove('accessibility-mode');
@@ -37,13 +52,17 @@ const AccountPage = () => {
     accessSettings.linkHighlight ? body.classList.add('link-highlight-mode') : body.classList.remove('link-highlight-mode');
     accessSettings.reducedMotion ? body.classList.add('reduced-motion-mode') : body.classList.remove('reduced-motion-mode');
 
+    // Persist settings for future sessions
     Object.keys(accessSettings).forEach(key => {
       localStorage.setItem(`access_${key}`, accessSettings[key]);
     });
   }, [accessSettings]);
 
+  /**
+   * Effect: Data Fetcher
+   * Retrieves the user's booking history (receipts) on component mount.
+   */
   useEffect(() => {
-    // Fetch bookings for receipts
     fetch('/api/bookings')
       .then(res => res.json())
       .then(data => {
@@ -56,10 +75,18 @@ const AccountPage = () => {
       });
   }, []);
 
+  /**
+   * Toggles a specific accessibility setting.
+   * @param {string} key - The setting name to toggle.
+   */
   const toggleSetting = (key) => {
     setAccessSettings(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
+  /**
+   * Handles profile form submission.
+   * Updates state and persists changes to localStorage.
+   */
   const handleProfileUpdate = (e) => {
     e.preventDefault();
     setIsEditing(false);
@@ -68,6 +95,10 @@ const AccountPage = () => {
     alert("Profile updated successfully!");
   };
 
+  /**
+   * Handles saving a new payment method.
+   * Identifies card brand (Visa/Mastercard) and stores masked info.
+   */
   const handleSaveCard = (e) => {
     e.preventDefault();
     const lastFour = newCard.number.slice(-4);
@@ -82,17 +113,26 @@ const AccountPage = () => {
     setNewCard({ number: '', expiry: '', cvv: '' });
   };
 
+  /**
+   * Removes the saved payment method from state and storage.
+   */
   const handleRemoveCard = () => {
     setSavedCard(null);
     localStorage.removeItem('savedCard');
   };
 
+  /**
+   * Logs out the user by clearing login state and redirecting.
+   */
   const handleLogout = () => {
     localStorage.removeItem('isLoggedIn');
     navigate('/signin');
     window.location.reload();
   };
 
+  /**
+   * Internal reusable component for accessibility toggles.
+   */
   const ToggleSwitch = ({ checked, onChange }) => (
     <label className="switch" style={{ position: 'relative', display: 'inline-block', width: '50px', height: '24px' }}>
       <input type="checkbox" checked={checked} onChange={onChange} style={{ opacity: 0, width: 0, height: 0 }} />
@@ -112,6 +152,7 @@ const AccountPage = () => {
 
   return (
     <div className="account-page" style={{ padding: '20px' }}>
+      {/* Header with Navigation and Logout */}
       <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <button className="back-btn" onClick={() => navigate('/')}>&lt; Home</button>
@@ -122,7 +163,7 @@ const AccountPage = () => {
 
       <div className="account-content" style={{ marginTop: '30px', display: 'grid', gridTemplateColumns: '1fr', gap: '30px' }}>
         
-        {/* 1. Profile Section */}
+        {/* Section 1: User Profile Details */}
         <section className="account-section" style={{ padding: '20px', background: 'var(--soft-lavender)', borderRadius: '15px', border: '1px solid var(--primary-lavender)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3>Profile Information</h3>
@@ -147,7 +188,7 @@ const AccountPage = () => {
           </div>
         </section>
 
-        {/* 2. Saved Payment Methods Section */}
+        {/* Section 2: Payment Methods - CRUD for saved cards */}
         <section className="payment-section" style={{ padding: '20px', background: '#fff', borderRadius: '15px', border: '1px solid #ddd' }}>
           <h3>Saved Payment Methods</h3>
           <div style={{ marginTop: '20px' }}>
@@ -182,7 +223,7 @@ const AccountPage = () => {
           </div>
         </section>
 
-        {/* 3. Receipts & Order History Section */}
+        {/* Section 3: Booking History - Displays all past purchases */}
         <section className="receipts-section" style={{ padding: '20px', background: '#fff', borderRadius: '15px', border: '1px solid #ddd' }}>
           <h3>Receipts & Order History</h3>
           <div style={{ marginTop: '20px' }}>
@@ -225,7 +266,7 @@ const AccountPage = () => {
           </div>
         </section>
 
-        {/* 4. Visual Accessibility Section */}
+        {/* Section 4: Visual Accessibility - Toggles for UI modifications */}
         <section className="account-settings" style={{ padding: '20px', border: '1px solid var(--soft-lavender)', borderRadius: '15px' }}>
           <h3 style={{ marginBottom: '20px' }}>Visual Accessibility</h3>
           <div className="settings-grid" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>

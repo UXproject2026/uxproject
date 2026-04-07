@@ -1,3 +1,15 @@
+"""
+Data Enrichment Script: Event Descriptions (Batch 1)
+---------------------------------------------------
+This script is used to enrich the 'events' collection with detailed, high-quality 
+descriptions for a specific set of live events.
+
+Interaction with MongoDB:
+- Connects to the 'theatre_leeds' database.
+- Uses case-insensitive regex matching on the 'title' field to identify target events.
+- Performs 'update_many' operations to set the 'description' field for matching documents.
+"""
+
 from pymongo import MongoClient
 
 def enrich_data():

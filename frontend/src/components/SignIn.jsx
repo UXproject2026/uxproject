@@ -1,27 +1,44 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
+/**
+ * SignIn Component
+ * Allows existing users to access their accounts.
+ */
 const SignIn = () => {
+  // --- Form State ---
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
 
+  /**
+   * handleSubmit
+   * Processes the login request and updates the local session state.
+   */
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Simulate login
+    
+    // --- Simulated Authentication ---
+    // In this prototype, we consider any credentials valid as long as they are provided.
     localStorage.setItem('isLoggedIn', 'true');
     localStorage.setItem('userEmail', email);
+
+    // Redirect user to their account dashboard
     navigate('/account');
-    window.location.reload(); // Refresh to update navbar
+
+    // Force refresh to trigger Navbar UI updates (showing "Account" instead of "Sign In")
+    window.location.reload(); 
   };
 
   return (
     <div className="auth-container">
+      {/* Visual branding/welcome */}
       <div className="auth-header">
         <h2>Sign In</h2>
         <p>Welcome back to ScenePass</p>
       </div>
       
+      {/* Login Form */}
       <form className="auth-form" onSubmit={handleSubmit}>
         <div className="form-group">
           <label>Email Address</label>
@@ -48,6 +65,7 @@ const SignIn = () => {
         <button type="submit" className="auth-submit-btn">Sign In</button>
       </form>
 
+      {/* Navigation link for new users */}
       <div className="auth-footer">
         Don't have an account? <Link to="/signup">Sign Up</Link>
       </div>

@@ -1,3 +1,16 @@
+"""
+Testing/Maintenance Script: Remove Specific Ticket
+-------------------------------------------------
+This utility script is used for testing or manual database corrections. It removes 
+ a single booking record for a specific event.
+
+Interaction with MongoDB:
+- Connects to the 'theatre_leeds' database.
+- Locates an event titled "Blur the Lines" using regex.
+- Finds the first available booking record associated with that event's ID.
+- Deletes that specific booking from the 'bookings' collection.
+"""
+
 from pymongo import MongoClient
 from bson import ObjectId
 

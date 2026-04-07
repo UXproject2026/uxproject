@@ -1,3 +1,16 @@
+"""
+Database Maintenance Script: Clean Mock Data
+-------------------------------------------
+This script is used for database cleanup, specifically to remove mock or test event data
+from the production-ready 'events' collection.
+
+Interaction with MongoDB:
+- Connects to the 'theatre_leeds' database.
+- Deletes events from the 'events' collection that match a predefined list of mock titles.
+- Removes any event documents that lack an 'externalId' field, ensuring only live 
+  integrated events remain.
+"""
+
 from pymongo import MongoClient
 
 def clean_mock_data():

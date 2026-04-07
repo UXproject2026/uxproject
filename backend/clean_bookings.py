@@ -1,3 +1,16 @@
+"""
+Database Maintenance Script: Clean Orphaned Bookings
+--------------------------------------------------
+This script performs database maintenance by identifying and removing "orphaned" booking records.
+A booking is considered orphaned if its associated event no longer exists in the 'events' collection.
+
+Interaction with MongoDB:
+- Connects to the 'theatre_leeds' database.
+- Iterates through all documents in the 'bookings' collection.
+- Verifies the existence of the corresponding event in the 'events' collection using 'eventId'.
+- Deletes any booking records that reference non-existent or invalid event IDs.
+"""
+
 from pymongo import MongoClient
 from bson import ObjectId
 

@@ -2,19 +2,27 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import EventCard from './EventCard';
 
+/**
+ * SearchPage Component
+ * Provides a comprehensive search and filter interface for all theatre events in Leeds.
+ */
 const SearchPage = () => {
-  const [allEvents, setAllEvents] = useState([]);
+  // --- State Management ---
+  const [allEvents, setAllEvents] = useState([]); // Full list of events from API
   const [loading, setLoading] = useState(true);
-  const [limit, setLimit] = useState(20);
+  const [limit, setLimit] = useState(20);         // Pagination limit
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Helper to parse date string into a sortable number
+  /**
+   * Helper: parseEventDate
+   * Converts custom date strings (e.g., "Friday 13 February") into timestamps for sorting.
+   * Handles year rollover (if month is past, assume next year).
+   */
   const parseEventDate = (dateStr, timeStr) => {
     if (!dateStr || dateStr.includes('TBC')) return Infinity;
     
     try {
-      // Format is "Friday 13 February" or similar
       const parts = dateStr.split(' ');
       if (parts.length < 3) return Infinity;
       
@@ -28,13 +36,11 @@ const SearchPage = () => {
       const month = months[monthName];
       if (month === undefined) return Infinity;
       
-      // Assume current year (or next if month has passed)
       const now = new Date();
       let year = now.getFullYear();
-      
       const date = new Date(year, month, day);
       
-      // If date is in the past, assume it's for next year
+      // Smart year detection
       if (date < now && month < now.getMonth()) {
         date.setFullYear(year + 1);
       }
@@ -50,44 +56,44 @@ const SearchPage = () => {
     }
   };
 
-  // Get initial category from URL if present
+  // --- Filter Initialization ---
+  // Read category from URL query params (e.g., ?category=Musical)
   const queryParams = new URLSearchParams(location.search);
   const initialCategory = queryParams.get('category') || 'All';
 
-  // Filter States
+  // --- Filter States ---
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [selectedVenue, setSelectedVenue] = useState('All');
 
-  // Unique options for filters
+  // Unique options for the dropdown filters
   const [categories, setCategories] = useState(['All']);
   const [venues, setVenues] = useState(['All']);
 
+  /**
+   * Effect: Initial Data Fetch
+   * Loads all events and calculates unique categories/venues for filters.
+   */
   useEffect(() => {
     fetch('/api/events')
       .then(res => res.json())
       .then(data => {
-        // Sort: Real images first, then by next available date
+        // Sort: Items with real photos first, then by date chronological
         const sortedData = [...data].sort((a, b) => {
-          // Priority 1: Real images
           if (a.hasRealImage && !b.hasRealImage) return -1;
           if (!a.hasRealImage && b.hasRealImage) return 1;
           
-          // Priority 2: Next available date
           const dateA = parseEventDate(a.date, a.time);
           const dateB = parseEventDate(b.date, b.time);
-          
           if (dateA !== dateB) return dateA - dateB;
-          
           return 0;
         });
 
         setAllEvents(sortedData);
         
-        // Extract unique values for filters
+        // Populate filter options dynamically based on data
         const cats = ['All', ...new Set(data.map(e => e.category))].filter(Boolean);
         const vens = ['All', ...new Set(data.map(e => e.venue))].filter(Boolean);
-        
         setCategories(cats);
         setVenues(vens);
       })
@@ -95,7 +101,10 @@ const SearchPage = () => {
       .finally(() => setLoading(false));
   }, []);
 
-  // Derived state for filtered events
+  /**
+   * Logic: Client-side Filtering
+   * Filters the 'allEvents' array based on search text, genre, and venue.
+   */
   const filteredEvents = allEvents.filter(event => {
     const matchSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                        (event.description && event.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -107,12 +116,16 @@ const SearchPage = () => {
     return matchSearch && matchCategory && matchVenue;
   });
 
+  // Slice for pagination
   const displayedEvents = filteredEvents.slice(0, limit);
 
   const handleLoadMore = () => {
     setLimit(prev => prev + 20);
   };
 
+  /**
+   * Resets all search and filter states to default.
+   */
   const clearFilters = () => {
     setSearchTerm('');
     setSelectedCategory('All');
@@ -123,11 +136,13 @@ const SearchPage = () => {
 
   return (
     <div className="search-page-container">
+      {/* Page Header */}
       <header className="page-header search-page-header">
         <button className="back-btn" onClick={() => navigate('/')}>&lt; Home</button>
         <h2>Explore Leeds Theatre</h2>
       </header>
 
+      {/* Main Search & Filter UI */}
       <section className="search-filter-section">
         <div className="search-main-bar">
           <span className="search-icon">🔍</span>
@@ -138,7 +153,7 @@ const SearchPage = () => {
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
-              setLimit(20);
+              setLimit(20); // Reset pagination on new search
             }}
           />
           {(searchTerm || selectedCategory !== 'All' || selectedVenue !== 'All') && (
@@ -147,6 +162,7 @@ const SearchPage = () => {
         </div>
 
         <div className="filter-grid">
+          {/* Genre Filter */}
           <div className="filter-group">
             <label className="filter-label">Genre</label>
             <select 
@@ -161,6 +177,7 @@ const SearchPage = () => {
             </select>
           </div>
 
+          {/* Venue Filter */}
           <div className="filter-group">
             <label className="filter-label">Venue</label>
             <select 
@@ -177,6 +194,7 @@ const SearchPage = () => {
         </div>
       </section>
 
+      {/* Results Summary */}
       <div className="search-results-summary">
         {loading ? (
           <p>Loading live events...</p>
@@ -185,6 +203,7 @@ const SearchPage = () => {
         )}
       </div>
 
+      {/* Event Grid & Load More */}
       <div className="search-results-grid">
         {loading ? (
           <div className="loading-state">Searching live listings...</div>
@@ -205,6 +224,7 @@ const SearchPage = () => {
             )}
           </>
         ) : (
+          /* Empty State */
           <div className="no-results-state">
             <span className="no-results-icon">🎭</span>
             <h3>No shows found</h3>
