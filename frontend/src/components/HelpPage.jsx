@@ -3,6 +3,10 @@ import { useNavigate } from 'react-router-dom';
 const HelpPage = () => {
   const navigate = useNavigate();
 
+  const openChat = () => {
+    window.dispatchEvent(new CustomEvent('open-chat'));
+  };
+
   return (
     <div className="help-page" style={{ padding: '20px' }}>
       <header className="page-header">
@@ -31,11 +35,18 @@ const HelpPage = () => {
 
         <section className="contact-section" style={{ padding: '20px', background: 'var(--soft-lavender)', borderRadius: '15px' }}>
           <h3>Still need help?</h3>
-          <p style={{ marginTop: '10px' }}>Our support team is available Monday to Friday, 9am - 5pm.</p>
-          <div style={{ marginTop: '15px', fontWeight: 'bold' }}>
-            <p>📧 support@scenepass.edu</p>
-            <p>📞 0113 555 0123</p>
+          <p style={{ marginTop: '10px' }}>Our support team is available Monday to Friday, 9am - 10pm.</p>
+          <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '12px', fontWeight: 'bold' }}>
+            <p style={{ margin: 0 }}>📧 support@scenepass.edu</p>
+            <p style={{ margin: 0 }}>📞 0113 555 0123</p>
+            <p 
+              onClick={openChat} 
+              style={{ cursor: 'pointer', color: 'var(--primary-black)', display: 'inline-flex', alignItems: 'center', gap: '8px', margin: 0 }}
+            >
+              💬 Contact live chat
+            </p>
           </div>
+
         </section>
       </div>
     </div>

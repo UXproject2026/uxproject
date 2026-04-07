@@ -9,6 +9,9 @@ import HelpPage from './components/HelpPage'
 import AccountPage from './components/AccountPage'
 import SignIn from './components/SignIn'
 import SignUp from './components/SignUp'
+import TermsOfService from './components/TermsOfService'
+import PrivacyPolicy from './components/PrivacyPolicy'
+import ScrollToTop from './components/ScrollToTop'
 import ChatWidget from './components/ChatWidget'
 import './App.css'
 
@@ -48,11 +51,11 @@ const TopNav = () => {
                 style={{ 
                   background: 'none', 
                   border: 'none', 
-                  color: 'var(--text-dark)', 
+                  color: 'var(--text-main)', 
                   cursor: 'pointer', 
-                  fontWeight: '500',
+                  fontWeight: '600',
                   padding: '0',
-                  fontSize: 'inherit',
+                  fontSize: '15px',
                   fontFamily: 'inherit'
                 }}
               >
@@ -68,9 +71,56 @@ const TopNav = () => {
   )
 }
 
+const Footer = () => {
+  return (
+    <footer className="main-footer">
+      <div className="footer-content">
+        <div className="footer-brand">
+          <Link to="/" className="logo">
+            Scene<span className="logo-accent">Pass</span>
+          </Link>
+          <p>The premier destination for discovering and booking the best performing arts events in Leeds.</p>
+        </div>
+        <div className="footer-links">
+          <h4>Explore</h4>
+          <ul>
+            <li><Link to="/">Home</Link></li>
+            <li><Link to="/search">Search Shows</Link></li>
+            <li><Link to="/help">Help & FAQ</Link></li>
+          </ul>
+        </div>
+        <div className="footer-links">
+          <h4>Account</h4>
+          <ul>
+            <li><Link to="/signin">Sign In</Link></li>
+            <li><Link to="/signup">Create Account</Link></li>
+            <li><Link to="/my-tickets">My Tickets</Link></li>
+          </ul>
+        </div>
+        <div className="footer-links">
+          <h4>Connect</h4>
+          <ul>
+            <li><a href="#">Instagram</a></li>
+            <li><a href="#">Twitter</a></li>
+            <li><a href="#">Facebook</a></li>
+          </ul>
+        </div>
+      </div>
+      <div className="footer-bottom">
+        <p>&copy; 2026 ScenePass Leeds. All rights reserved.</p>
+        <div className="footer-legal">
+          <Link to="/privacy" style={{ marginRight: '20px' }}>Privacy Policy</Link>
+          <Link to="/terms">Terms of Service</Link>
+        </div>
+      </div>
+    </footer>
+  );
+};
+
 function App() {
   return (
     <Router>
+      <ScrollToTop />
       <div className="app-container">
         <TopNav />
         <main className="content">
@@ -84,8 +134,11 @@ function App() {
             <Route path="/account" element={<AccountPage />} />
             <Route path="/signin" element={<SignIn />} />
             <Route path="/signup" element={<SignUp />} />
+            <Route path="/terms" element={<TermsOfService />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
           </Routes>
         </main>
+        <Footer />
         <ChatWidget />
       </div>
     </Router>

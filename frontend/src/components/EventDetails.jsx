@@ -139,7 +139,7 @@ const EventDetails = () => {
           </div>
         </div>
 
-        <div className="event-description-section" style={{ margin: '30px 0', lineHeight: '1.6' }}>
+        <div className="event-description-section">
           <h3>About the Show</h3>
           <div 
             className="detail-description" 
@@ -151,16 +151,16 @@ const EventDetails = () => {
           <h3>Tickets</h3>
           
           {loadingPlan ? (
-            <div className="loading-plan" style={{ textAlign: 'center', padding: '40px' }}>
+            <div className="loading-plan" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
                Checking ticket availability...
             </div>
           ) : isReserved ? (
             <div className="multi-area-plan">
-              <p style={{ fontSize: '14px', color: '#666', marginBottom: '20px' }}>Select your seats from the map below:</p>
+              <p style={{ textAlign: 'center', color: 'var(--text-muted)', marginBottom: '30px' }}>Select your seats from the map below:</p>
               {planData.areas.filter(a => a.hasSeats).map((area) => (
-                <div key={area.id} className="plan-area-container" style={{ marginBottom: '30px', background: '#fdfdfd', padding: '15px', borderRadius: '12px', border: '1px solid #eee' }}>
-                  <h4 style={{ color: 'var(--primary-lavender)', textAlign: 'center', marginBottom: '10px' }}>{area.name}</h4>
-                  <div className="svg-wrapper">
+                <div key={area.id} className="plan-area-container" style={{ marginBottom: '40px' }}>
+                  <h4 style={{ textAlign: 'center', marginBottom: '15px', fontWeight: '700' }}>{area.name}</h4>
+                  <div className="svg-wrapper" style={{ background: 'var(--bg-subtle)', borderRadius: 'var(--radius-md)', padding: '20px', border: '1px solid var(--border-subtle)' }}>
                     <svg viewBox={area.viewBox} width="100%" height="auto" style={{ maxHeight: '400px', display: 'block' }}>
                       {area.seats?.map(seat => {
                         const isSelected = selectedSeats.find(s => s.id === seat.id);
@@ -169,7 +169,7 @@ const EventDetails = () => {
                             key={seat.id} cx={seat.x} cy={seat.y} r="10"
                             fill={isSelected ? 'var(--primary-lavender)' : '#fff'}
                             stroke={isSelected ? '#fff' : 'var(--primary-lavender)'}
-                            strokeWidth="2" style={{ cursor: 'pointer' }}
+                            strokeWidth="2" style={{ cursor: 'pointer', transition: 'all 0.2s' }}
                             onClick={() => toggleSeat(seat)}
                           />
                         );
@@ -182,38 +182,46 @@ const EventDetails = () => {
           ) : (
             <div className="ga-selection" style={{ 
               textAlign: 'center', 
-              padding: '40px', 
-              background: '#f9f9f9', 
-              borderRadius: '15px',
-              border: '1px solid var(--soft-lavender)'
+              padding: '60px', 
+              background: 'var(--bg-subtle)', 
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--border-medium)'
             }}>
-              <h4>General Admission</h4>
-              <p style={{ color: '#666' }}>This event has unreserved seating. Please select the number of tickets you require.</p>
+              <h4 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '12px' }}>General Admission</h4>
+              <p style={{ color: 'var(--text-muted)', marginBottom: '32px' }}>This event has unreserved seating. Please select the number of tickets you require.</p>
               
               <div className="quantity-selector" style={{ 
-                display: 'flex', 
+                display: 'inline-flex', 
                 alignItems: 'center', 
                 justifyContent: 'center', 
-                gap: '20px',
-                marginTop: '20px'
+                gap: '32px',
+                background: 'white',
+                padding: '12px 24px',
+                borderRadius: 'var(--radius-full)',
+                boxShadow: 'var(--shadow-sm)',
+                border: '1px solid var(--border-medium)'
               }}>
                 <button 
                   onClick={() => handleGaChange(-1)}
-                  style={{ width: '40px', height: '40px', borderRadius: '50%', border: '1px solid #ccc', background: '#fff', fontSize: '20px', cursor: 'pointer' }}
+                  style={{ width: '44px', height: '44px', borderRadius: '50%', border: '1px solid var(--border-medium)', background: '#fff', fontSize: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 >-</button>
-                <span style={{ fontSize: '24px', fontWeight: 'bold', minWidth: '30px' }}>{gaCount}</span>
+                <span style={{ fontSize: '28px', fontWeight: '800', minWidth: '40px', color: 'var(--accent-purple)' }}>{gaCount}</span>
                 <button 
                   onClick={() => handleGaChange(1)}
-                  style={{ width: '40px', height: '40px', borderRadius: '50%', border: '1px solid #ccc', background: '#fff', fontSize: '20px', cursor: 'pointer' }}
+                  style={{ width: '44px', height: '44px', borderRadius: '50%', border: '1px solid var(--border-medium)', background: '#fff', fontSize: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 >+</button>
               </div>
             </div>
           )}
 
           {isReserved && (
-            <div className="seat-legend" style={{ marginTop: '25px', display: 'flex', justifyContent: 'center', gap: '20px' }}>
-              <div className="legend-item"><span className="seat-sample" style={{ border: '2px solid var(--primary-lavender)', background: '#fff', borderRadius: '50%' }}></span> Available</div>
-              <div className="legend-item"><span className="seat-sample selected" style={{ background: 'var(--primary-lavender)', borderRadius: '50%' }}></span> Selected</div>
+            <div className="seat-legend" style={{ marginTop: '32px', display: 'flex', justifyContent: 'center', gap: '32px' }}>
+              <div className="legend-item" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: '500', color: 'var(--text-muted)' }}>
+                <span className="seat-sample" style={{ width: '12px', height: '12px', display: 'inline-block', border: '2px solid var(--primary-lavender)', background: '#fff', borderRadius: '50%' }}></span> Available
+              </div>
+              <div className="legend-item" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: '500', color: 'var(--text-muted)' }}>
+                <span className="seat-sample selected" style={{ width: '12px', height: '12px', display: 'inline-block', background: 'var(--primary-lavender)', borderRadius: '50%' }}></span> Selected
+              </div>
             </div>
           )}
         </div>
@@ -228,7 +236,7 @@ const EventDetails = () => {
             onClick={handleContinue}
             disabled={selectedSeats.length === 0}
           >
-            Continue to Payment &gt;
+            Continue to Payment &rarr;
           </button>
         </div>
       </div>

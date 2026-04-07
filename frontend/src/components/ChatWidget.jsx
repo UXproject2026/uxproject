@@ -8,6 +8,12 @@ const ChatWidget = () => {
   const [inputValue, setSearchValue] = useState('');
   const messagesEndRef = useRef(null);
 
+  useEffect(() => {
+    const handleOpenChat = () => setIsOpen(true);
+    window.addEventListener('open-chat', handleOpenChat);
+    return () => window.removeEventListener('open-chat', handleOpenChat);
+  }, []);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };

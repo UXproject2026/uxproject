@@ -7,6 +7,43 @@ const Home = () => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Helper to parse date string into a sortable number
+  const parseEventDate = (dateStr, timeStr) => {
+    if (!dateStr || dateStr.includes('TBC')) return Infinity;
+    
+    try {
+      const parts = dateStr.split(' ');
+      if (parts.length < 3) return Infinity;
+      
+      const day = parseInt(parts[1]);
+      const monthName = parts[2];
+      const months = {
+        'January': 0, 'February': 1, 'March': 2, 'April': 3, 'May': 4, 'June': 5,
+        'July': 6, 'August': 7, 'September': 8, 'October': 9, 'November': 10, 'December': 11
+      };
+      
+      const month = months[monthName];
+      if (month === undefined) return Infinity;
+      
+      const now = new Date();
+      let year = now.getFullYear();
+      const date = new Date(year, month, day);
+      
+      if (date < now && month < now.getMonth()) {
+        date.setFullYear(year + 1);
+      }
+
+      if (timeStr) {
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        date.setHours(hours || 0, minutes || 0);
+      }
+      
+      return date.getTime();
+    } catch (e) {
+      return Infinity;
+    }
+  };
+
   useEffect(() => {
     fetch('/api/events')
       .then(res => res.json())
@@ -23,26 +60,28 @@ const Home = () => {
   const categories = ['Opera', 'Live Music', 'Ballet'];
 
   // Helper function to get events for each category, prioritizing those with real images
-  const getFeaturedEvents = (category, count = 3) => {
+  const getFeaturedEvents = (category, count = 4) => {
     const filtered = events.filter(e => e.category === category);
     
-    // Separate into those with and without real images
-    const withImages = filtered.filter(e => e.hasRealImage);
-    const withoutImages = filtered.filter(e => !e.hasRealImage);
+    // Sort all filtered events by date first
+    const sortedByDate = [...filtered].sort((a, b) => {
+      const dateA = parseEventDate(a.date, a.time);
+      const dateB = parseEventDate(b.date, b.time);
+      return dateA - dateB;
+    });
     
-    // Shuffle the "with images" group to keep it fresh
-    const shuffledWith = [...withImages].sort(() => 0.5 - Math.random());
+    // Separate into those with and without real images (keeping their date order)
+    const withImages = sortedByDate.filter(e => e.hasRealImage);
+    const withoutImages = sortedByDate.filter(e => !e.hasRealImage);
     
-    // If we have enough with images, return them
-    if (shuffledWith.length >= count) {
-      return shuffledWith.slice(0, count);
+    // If we have enough with images, return the first 'count' (which are the soonest)
+    if (withImages.length >= count) {
+      return withImages.slice(0, count);
     }
     
-    // Otherwise, fill the remaining slots with shows without images
-    const remaining = count - shuffledWith.length;
-    const shuffledWithout = [...withoutImages].sort(() => 0.5 - Math.random());
-    
-    return [...shuffledWith, ...shuffledWithout.slice(0, remaining)];
+    // Otherwise, fill the remaining slots with shows without images (also soonest first)
+    const remaining = count - withImages.length;
+    return [...withImages, ...withoutImages.slice(0, remaining)];
   };
 
   return (
@@ -68,8 +107,7 @@ const Home = () => {
             <span className="section-label">Our Story</span>
             <h2>The Heart of Performing Arts in Leeds</h2>
             <p>
-              ScenePass has been the cornerstone of the city's cultural landscape for over a century. 
-              We are dedicated to bringing world-class performances to our community.
+              ScenePass is a premier platform dedicated to connecting audiences with the vibrant theatre scene of Leeds. We provide a seamless experience for discovering, exploring, and securing your place at the city's most prestigious venues.
             </p>
             <div className="about-stats">
               <div className="stat-item">
@@ -90,10 +128,13 @@ const Home = () => {
 
       {/* Featured Shows Sections */}
       {categories.map(category => (
-        <section key={category} className="featured-section" style={{ padding: '40px 0' }}>
+        <section key={category} className="featured-section">
           <div className="section-header">
-            <h2>Upcoming {category}</h2>
-            <Link to={`/search?category=${category}`} className="view-all-link" style={{ color: 'var(--primary-lavender)', fontWeight: 'bold', textDecoration: 'none' }}>View All &rarr;</Link>
+            <div>
+              <span className="section-label">Discover</span>
+              <h2>Upcoming {category}</h2>
+            </div>
+            <Link to={`/search?category=${category}`} className="view-all-link">View All &rarr;</Link>
           </div>
           
           {loading ? (
@@ -113,7 +154,7 @@ const Home = () => {
         <div className="newsletter-content">
           <h2>Stay in the Spotlight</h2>
           <p>Subscribe to our newsletter for early access to tickets and exclusive content.</p>
-          <form className="newsletter-form" onSubmit={(e) => e.preventDefault()}>
+          <form className="newsletter-form" onSubmit={() => {}}>
             <input type="email" placeholder="Enter your email address" required />
             <button type="submit">Join the List</button>
           </form>

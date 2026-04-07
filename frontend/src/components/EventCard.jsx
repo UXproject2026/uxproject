@@ -15,21 +15,17 @@ const EventCard = ({ event }) => {
         <div className="venue-badge">{event.venue}</div>
       </div>
       <div className="event-details">
+        <div className="event-info-top">
+          <span className="info-item">📅 {event.date}</span>
+        </div>
         <h3>{event.title}</h3>
         <p className="event-description">{getCleanDescription(event.description)}</p>
-        <div className="event-info">
-          <div className="info-item">
-            <span className="icon">📅</span>
-            <span>{event.date}</span>
-          </div>
-          <div className="info-item">
-            <span className="icon">🕒</span>
-            <span>{event.time}</span>
-          </div>
+        <div className="event-footer">
+          <div className="event-price">From £{event.price.toFixed(2)}</div>
+          <Link to={`/events/${event._id}`} className="view-details-btn">
+            View Show &rarr;
+          </Link>
         </div>
-        <Link to={`/events/${event._id}`} className="view-details-btn">
-          View Details
-        </Link>
       </div>
     </div>
   );
