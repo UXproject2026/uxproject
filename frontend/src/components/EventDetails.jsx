@@ -103,8 +103,12 @@ const EventDetails = () => {
     if (selectedSeats.find(s => s.id === seatId)) {
       setSelectedSeats(prev => prev.filter(s => s.id !== seatId));
     } else {
-      setSelectedSeats(prev => [...prev, seat]);
-    }
+      const seatIdentifier = seat.row 
+        ? `Row ${seat.row}, Seat ${seat.number || seat.name}`
+        : (seat.name.includes('Seat') ? seat.name : `Seat ${seat.name}`);
+
+      const seatWithUniqueName = { ...seat, name: seatIdentifier };
+      setSelectedSeats(prev => [...prev, seatWithUniqueName]);    }
   };
 
   /**

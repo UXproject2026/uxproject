@@ -1176,3 +1176,45 @@ body {
   }
   .continue-btn { width: 100%; }
 }
+
+/* --- VENUE MAP STYLES --- */
+.venue-map-container {
+  background: var(--bg-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  border: 1px solid var(--border-subtle);
+}
+
+.venue-info-box {
+  margin-top: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.venue-address {
+  font-size: 14px;
+  color: var(--text-main);
+  font-weight: 600;
+  margin: 0;
+}
+
+.directions-link {
+  display: inline-block;
+  background: var(--primary-lavender);
+  color: white;
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  transition: all 0.2s;
+  align-self: flex-start;
+}
+
+.directions-link:hover {
+  background: var(--accent-purple);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}

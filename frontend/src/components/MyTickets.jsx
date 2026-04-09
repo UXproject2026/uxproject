@@ -11,6 +11,68 @@ import { useNavigate, Link } from 'react-router-dom';
  * 3. Compares the user's booked seat identifiers (e.g., "A12") with the seats in the map.
  * 4. Highlights the matching seats using a distinct color.
  */
+// --- VENUE COORDINATES AND ADDRESSES ---
+const VENUE_LOCATIONS = {
+  "Leeds Grand Theatre": {
+    address: "46 New Briggate, Leeds LS1 6NU",
+    mapUrl: "https://maps.google.com/maps?q=Leeds%20Grand%20Theatre&t=&z=15&ie=UTF8&iwloc=&output=embed",
+    directionsUrl: "https://www.google.com/maps/dir/?api=1&destination=Leeds+Grand+Theatre+LS1+6NU"
+  },
+  "City Varieties Music Hall": {
+    address: "Swan St, Leeds LS1 6LW",
+    mapUrl: "https://maps.google.com/maps?q=City%20Varieties%20Music%20Hall&t=&z=15&ie=UTF8&iwloc=&output=embed",
+    directionsUrl: "https://www.google.com/maps/dir/?api=1&destination=City+Varieties+Music+Hall+LS1+6LW"
+  },
+  "Hyde Park Picture House": {
+    address: "73 Brudenell Rd, Leeds LS6 1JD",
+    mapUrl: "https://maps.google.com/maps?q=Hyde%20Park%20Picture%20House&t=&z=15&ie=UTF8&iwloc=&output=embed",
+    directionsUrl: "https://www.google.com/maps/dir/?api=1&destination=Hyde+Park+Picture+House+LS6+1JD"
+  },
+  "Opera North": {
+    address: "32 New Briggate, Leeds LS1 6NU",
+    mapUrl: "https://maps.google.com/maps?q=Opera%20North%20Leeds&t=&z=15&ie=UTF8&iwloc=&output=embed",
+    directionsUrl: "https://www.google.com/maps/dir/?api=1&destination=Opera+North+Leeds"
+  },
+  "Northern Ballet": {
+    address: "Quarry Hill, Leeds LS2 7PA",
+    mapUrl: "https://maps.google.com/maps?q=Northern%20Ballet%20Leeds&t=&z=15&ie=UTF8&iwloc=&output=embed",
+    directionsUrl: "https://www.google.com/maps/dir/?api=1&destination=Northern+Ballet+Leeds"
+  }
+};
+
+/**
+ * --- VENUE MAP COMPONENT ---
+ * Displays an embedded Google Map for the venue and a button for GPS directions.
+ */
+const VenueMap = ({ venueName }) => {
+  const venue = VENUE_LOCATIONS[venueName] || VENUE_LOCATIONS["Leeds Grand Theatre"];
+
+  return (
+    <div className="venue-map-container">
+      <iframe
+        title="Venue Location"
+        src={venue.mapUrl}
+        width="100%"
+        height="200"
+        style={{ border: 0, borderRadius: '8px' }}
+        allowFullScreen=""
+        loading="lazy"
+      ></iframe>
+      <div className="venue-info-box">
+        <p className="venue-address">{venue.address}</p>
+        <a 
+          href={venue.directionsUrl} 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="directions-link"
+        >
+          🚗 Get Directions (GPS)
+        </a>
+      </div>
+    </div>
+  );
+};
+
 const SeatingPlanPopup = ({ eventId, bookedSeats, onClose }) => {
   const [planData, setPlanData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -23,7 +85,6 @@ const SeatingPlanPopup = ({ eventId, bookedSeats, onClose }) => {
           setPlanData(null);
         } else {
           const allFoundAreas = [];
-          
           /**
            * Recursively processes areas to find those with seats.
            * Calculates dynamic viewBox for each area to ensure proper SVG scaling.
@@ -50,24 +111,32 @@ const SeatingPlanPopup = ({ eventId, bookedSeats, onClose }) => {
           
           data.areas.forEach(processArea);
 
-          // Normalization logic to match seat names (e.g., handling spaces and casing)
+          // Robust normalization to handle various seat string formats
+          const normalize = (s) => String(s || "").toUpperCase().replace(/ROW|SEAT|[\s,]/g, "");
           const normalizedBooked = bookedSeats.map(s => s.trim().toUpperCase());
-          const isMatch = (seatName, seatRow, seatNum) => {
-            const sName = (seatName || "").toUpperCase();
-            const sRow = (seatRow || "").toUpperCase();
-            const sNum = String(seatNum || "");
-            const sConcat = (sRow + sNum).replace(/\s+/g, '');
+
+          const isMatch = (seat, bookedArray) => {
+            const sRow = String(seat.row || "").toUpperCase();
+            const sNum = String(seat.number || seat.name || "").toUpperCase();
+            const sFull = normalize(sRow + sNum);
             
-            return normalizedBooked.some(nb => {
-              const nbClean = nb.replace(/\s+/g, '');
-              return sName === nb || sConcat === nbClean;
+            return bookedArray.some(nb => {
+              const nbNorm = normalize(nb);
+              // Match if the normalized strings match, or if one is contained in the other (safely)
+              return nbNorm === sFull || (sFull.length > 0 && nbNorm.includes(sFull)) || (nbNorm.length > 0 && sFull.includes(nbNorm));
             });
           };
 
-          // Only show areas that contain at least one of the user's booked seats
-          const relevantAreas = allFoundAreas.filter(area => 
-            area.seats?.some(seat => isMatch(seat.name, seat.row, seat.number))
+          // Try to find areas that specifically contain the booked seats
+          let relevantAreas = allFoundAreas.filter(area => 
+            area.seats?.some(seat => isMatch(seat, normalizedBooked))
           );
+
+          // FALLBACK: If no specific match is found, show all areas that have seats 
+          // to avoid the "Map unavailable" error.
+          if (relevantAreas.length === 0) {
+            relevantAreas = allFoundAreas;
+          }
 
           setPlanData({ ...data, areas: relevantAreas });
         }
@@ -77,15 +146,15 @@ const SeatingPlanPopup = ({ eventId, bookedSeats, onClose }) => {
   }, [eventId, bookedSeats]);
 
   // Utility to reuse the matching logic in the render phase
-  const isMatch = (seatName, seatRow, seatNum, normalizedBooked) => {
-    const sName = (seatName || "").toUpperCase();
-    const sRow = (seatRow || "").toUpperCase();
-    const sNum = String(seatNum || "");
-    const sConcat = (sRow + sNum).replace(/\s+/g, '');
+  const isMatchRender = (seat, bookedArray) => {
+    const normalize = (s) => String(s || "").toUpperCase().replace(/ROW|SEAT|[\s,]/g, "");
+    const sRow = String(seat.row || "").toUpperCase();
+    const sNum = String(seat.number || seat.name || "").toUpperCase();
+    const sFull = normalize(sRow + sNum);
     
-    return normalizedBooked.some(nb => {
-      const nbClean = nb.replace(/\s+/g, '');
-      return sName === nb || sConcat === nbClean;
+    return bookedArray.some(nb => {
+      const nbNorm = normalize(nb);
+      return nbNorm === sFull || (sFull.length > 0 && nbNorm.includes(sFull)) || (nbNorm.length > 0 && sFull.includes(nbNorm));
     });
   };
 
@@ -107,7 +176,7 @@ const SeatingPlanPopup = ({ eventId, bookedSeats, onClose }) => {
           <div className="svg-wrapper" style={{ background: 'var(--bg-subtle)', borderRadius: '8px', padding: '10px' }}>
             <svg viewBox={area.viewBox} width="100%" height="auto" style={{ display: 'block' }}>
               {area.seats?.map(seat => {
-                const isBooked = isMatch(seat.name, seat.row, seat.number, normalizedBooked);
+                const isBooked = isMatchRender(seat, normalizedBooked);
                 return (
                   <circle
                     key={seat.id} cx={seat.x} cy={seat.y} r="10"
@@ -282,6 +351,14 @@ const MyTickets = () => {
             <div className="detail full booking-ref">
               <span className="label">BOOKING REFERENCE: </span>
               <span className="value" style={{ color: 'var(--primary-lavender)' }}>{booking.bookingRef}</span>
+            </div>
+          )}
+          
+          {/* VENUE MAP AND DIRECTIONS: Provides a visual location and GPS navigation link */}
+          {!isArchived && (
+            <div className="detail full venue-location-section" style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '20px' }}>
+              <span className="label" style={{ marginBottom: '15px', display: 'block' }}>📍 VENUE MAP & DIRECTIONS: </span>
+              <VenueMap venueName={booking.event?.venue} />
             </div>
           )}
         </div>
