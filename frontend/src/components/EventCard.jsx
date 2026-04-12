@@ -32,6 +32,14 @@ const EventCard = ({ event }) => {
           <span className="info-item">📅 {event.date}</span>
         </div>
         <h3>{event.title}</h3>
+        {event.rating > 0 && (
+          <div className="event-rating" style={{ color: '#FFD700', fontSize: '14px', marginBottom: '8px', fontWeight: 'bold' }}>
+            {'★'.repeat(Math.round(event.rating))} 
+            <span style={{ color: 'var(--text-muted)', fontSize: '12px', marginLeft: '4px' }}>
+              ({event.rating})
+            </span>
+          </div>
+        )}
         <p className="event-description">{getCleanDescription(event.description)}</p>
         
         {/* Footer: Price and Navigation */}

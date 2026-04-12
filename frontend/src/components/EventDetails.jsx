@@ -77,11 +77,12 @@ const EventDetails = () => {
 
           // Apply padding so seats aren't cut off by the SVG edge
           const padding = 30;
+          const topPadding = 80;
           return {
             ...area,
             hasSeats,
             // Calculate dynamic viewBox: "startX startY width height"
-            viewBox: hasSeats ? `${minX - padding} ${minY - padding} ${(maxX - minX) + padding * 2} ${(maxY - minY) + padding * 2}` : null
+            viewBox: hasSeats ? `${minX - padding} ${minY - topPadding} ${(maxX - minX) + padding * 2} ${(maxY - minY) + topPadding + padding}` : null
           };
         }) || [];
 
@@ -147,6 +148,23 @@ const EventDetails = () => {
     });
   };
 
+  const handleRate = (rating) => {
+    fetch(`/api/events/${eventId}/rate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rating })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) {
+          alert(data.error);
+        } else {
+          setEvent(prev => ({ ...prev, rating: data.newRating, ratingCount: (prev.ratingCount || 0) + 1 }));
+          alert("Thank you for your rating!");
+        }
+      });
+  };
+
   if (loading) return <div className="loading">Loading event details...</div>;
   if (!event) return <div className="error">Event not found!</div>;
 
@@ -164,7 +182,30 @@ const EventDetails = () => {
         <img src={event.image} alt={event.title} className="detail-image" />
         <div className="detail-header-info">
           <h2 className="detail-title">{event.title}</h2>
-          <span className="detail-category">{event.category}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <span className="detail-category">{event.category}</span>
+            <div className="rating-display" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ color: '#FFD700', fontSize: '20px' }}>
+                {'★'.repeat(Math.round(event.rating || 0))}{'☆'.repeat(5 - Math.round(event.rating || 0))}
+              </span>
+              <span style={{ fontWeight: 'bold' }}>{event.rating || '0.0'}</span>
+              <span style={{ color: 'var(--text-muted)', fontSize: '14px' }}>({event.ratingCount || 0} reviews)</span>
+            </div>
+          </div>
+
+          <div className="rate-this" style={{ marginTop: '20px', padding: '15px', background: 'var(--bg-subtle)', borderRadius: 'var(--radius-md)', display: 'inline-block' }}>
+            <span style={{ fontSize: '14px', fontWeight: '700', marginRight: '10px' }}>Rate this show:</span>
+            {[1, 2, 3, 4, 5].map((star) => (
+              <button
+                key={star}
+                onClick={() => handleRate(star)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: '#FFD700', padding: '0 2px' }}
+                title={`Rate ${star} stars`}
+              >
+                ☆
+              </button>
+            ))}
+          </div>
         </div>
         
         <div className="detail-info">
@@ -207,6 +248,26 @@ const EventDetails = () => {
                   <div className="svg-wrapper" style={{ background: 'var(--bg-subtle)', borderRadius: 'var(--radius-md)', padding: '20px', border: '1px solid var(--border-subtle)' }}>
                     {/* SVG RENDERER: Uses dynamic viewBox for auto-scaling */}
                     <svg viewBox={area.viewBox} width="100%" height="auto" style={{ maxHeight: '400px', display: 'block' }}>
+                      {/* STAGE INDICATOR: Positioned at the top of each area's view */}
+                      {(() => {
+                        const vb = area.viewBox.split(' ').map(Number);
+                        const centerX = vb[0] + vb[2] / 2;
+                        const topY = vb[1] + 10;
+                        return (
+                          <g className="stage-indicator">
+                            <rect 
+                              x={centerX - 100} y={topY} width="200" height="40" rx="4"
+                              fill="var(--border-medium)" opacity="0.2"
+                            />
+                            <text 
+                              x={centerX} y={topY + 25} textAnchor="middle" 
+                              className="stage-label"
+                            >
+                              STAGE
+                            </text>
+                          </g>
+                        );
+                      })()}
                       {area.seats?.map(seat => {
                         const isSelected = selectedSeats.find(s => s.id === seat.id);
                         return (

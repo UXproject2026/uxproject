@@ -133,6 +133,42 @@ def run_sync():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/events/<event_id>/rate', methods=['POST'])
+def rate_event(event_id):
+    """
+    Submits a 1-5 star rating for an event.
+    Calculates and stores the new average rating.
+    """
+    try:
+        if not ObjectId.is_valid(event_id):
+            return jsonify({"error": "Invalid event ID"}), 400
+            
+        data = request.json
+        new_rating = data.get('rating')
+        
+        if not new_rating or not (1 <= new_rating <= 5):
+            return jsonify({"error": "Rating must be between 1 and 5"}), 400
+
+        event = events_collection.find_one({"_id": ObjectId(event_id)})
+        if not event:
+            return jsonify({"error": "Event not found"}), 404
+
+        current_rating = event.get('rating', 0)
+        current_count = event.get('ratingCount', 0)
+        
+        # Calculate new rolling average
+        new_count = current_count + 1
+        new_avg = ((current_rating * current_count) + new_rating) / new_count
+        
+        events_collection.update_one(
+            {"_id": ObjectId(event_id)},
+            {"$set": {"rating": round(new_avg, 1), "ratingCount": new_count}}
+        )
+        
+        return jsonify({"message": "Rating submitted", "newRating": round(new_avg, 1)}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/events/<event_id>/seating-plan', methods=['GET'])
 def get_seating_plan(event_id):
     """

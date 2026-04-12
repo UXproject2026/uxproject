@@ -24,12 +24,23 @@ import './App.css'
  */
 const TopNav = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(localStorage.getItem('darkMode') === 'true');
   const navigate = useNavigate();
 
   // On mount, check if the user is logged in by reading from localStorage
   useEffect(() => {
     setIsLoggedIn(localStorage.getItem('isLoggedIn') === 'true');
   }, []);
+
+  // Sync dark mode class with state
+  useEffect(() => {
+    if (isDarkMode) {
+      document.body.classList.add('dark-mode');
+    } else {
+      document.body.classList.remove('dark-mode');
+    }
+    localStorage.setItem('darkMode', isDarkMode);
+  }, [isDarkMode]);
 
   // Clears user data from localStorage and resets the auth state on logout
   const handleLogout = () => {
@@ -40,6 +51,10 @@ const TopNav = () => {
     navigate('/signin');
     // Force reload to ensure all components reset their state based on cleared storage
     window.location.reload();
+  };
+
+  const toggleDarkMode = () => {
+    setIsDarkMode(!isDarkMode);
   };
 
   return (
@@ -75,6 +90,25 @@ const TopNav = () => {
           ) : (
             <Link to="/signin" className="signin-nav-link">Sign In</Link>
           )}
+          <button 
+            onClick={toggleDarkMode}
+            title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            style={{ 
+              background: 'var(--bg-subtle)', 
+              border: '1px solid var(--border-medium)', 
+              color: 'var(--text-main)', 
+              cursor: 'pointer', 
+              padding: '8px 12px',
+              borderRadius: 'var(--radius-full)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '18px',
+              transition: 'all 0.2s'
+            }}
+          >
+            {isDarkMode ? '☀️' : '🌙'}
+          </button>
         </div>
       </div>
     </nav>
@@ -127,23 +161,31 @@ const Footer = () => {
   );
 };
 
+const SocialBottomBar = () => {
+  return (
+    <div className="social-bottom-bar">
+      <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="social-link">
+        Instagram
+      </a>
+      <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="social-link">
+        Twitter
+      </a>
+      <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="social-link">
+        Facebook
+      </a>
+    </div>
+  );
+};
+
 /**
  * Main App Component: Sets up the routing structure of the application.
- * 
- * CLIENT-SIDE ROUTING:
- * Uses React Router's <BrowserRouter> (as Router) to enable dynamic, 
- * client-side navigation without full page reloads.
- * 
- * RESPONSIVE LAYOUT:
- * The app structure utilizes a flexbox container ('app-container') with 
- * a main 'content' area that grows to fill available space, ensuring 
- * the footer stays at the bottom on all screen sizes.
+...
  */
 function App() {
   return (
     <Router>
       <ScrollToTop />
-      <div className="app-container">
+      <div className="app-container" style={{ paddingBottom: '50px' }}>
         <TopNav />
         <main className="content">
           <Routes>
@@ -162,6 +204,7 @@ function App() {
           </Routes>
         </main>
         <Footer />
+        <SocialBottomBar />
         <ChatWidget />
       </div>
     </Router>

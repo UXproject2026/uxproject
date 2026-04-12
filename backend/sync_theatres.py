@@ -168,10 +168,13 @@ def sync_theatre_data():
                     
                     # --- MONGODB UPSERT ---
                     # Update the record if title + venue match, otherwise insert new.
-                    # This prevents duplicate events during repeated sync runs.
+                    # Use $setOnInsert for rating so sync doesn't overwrite local user data.
                     events_collection.update_one(
                         {"title": mapped_event['title'], "venue": mapped_event['venue']},
-                        {"$set": mapped_event},
+                        {
+                            "$set": mapped_event,
+                            "$setOnInsert": {"rating": 0, "ratingCount": 0}
+                        },
                         upsert=True
                     )
                     synced_count += 1

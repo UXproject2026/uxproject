@@ -38,7 +38,8 @@ const AccountPage = () => {
     textScaling: localStorage.getItem('access_textScaling') === 'true',
     highContrast: localStorage.getItem('access_highContrast') === 'true',
     linkHighlight: localStorage.getItem('access_linkHighlight') === 'true',
-    reducedMotion: localStorage.getItem('access_reducedMotion') === 'true'
+    reducedMotion: localStorage.getItem('access_reducedMotion') === 'true',
+    darkMode: localStorage.getItem('darkMode') === 'true'
   });
 
   /**
@@ -51,10 +52,15 @@ const AccountPage = () => {
     accessSettings.highContrast ? body.classList.add('high-contrast-mode') : body.classList.remove('high-contrast-mode');
     accessSettings.linkHighlight ? body.classList.add('link-highlight-mode') : body.classList.remove('link-highlight-mode');
     accessSettings.reducedMotion ? body.classList.add('reduced-motion-mode') : body.classList.remove('reduced-motion-mode');
+    accessSettings.darkMode ? body.classList.add('dark-mode') : body.classList.remove('dark-mode');
 
     // Persist settings for future sessions
     Object.keys(accessSettings).forEach(key => {
-      localStorage.setItem(`access_${key}`, accessSettings[key]);
+      if (key === 'darkMode') {
+        localStorage.setItem('darkMode', accessSettings[key]);
+      } else {
+        localStorage.setItem(`access_${key}`, accessSettings[key]);
+      }
     });
   }, [accessSettings]);
 
@@ -281,6 +287,10 @@ const AccountPage = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div><span style={{ fontWeight: 'bold', display: 'block' }}>Highlight Links</span><span style={{ fontSize: '13px', color: '#666' }}>Adds outlines to buttons.</span></div>
               <ToggleSwitch checked={accessSettings.linkHighlight} onChange={() => toggleSetting('linkHighlight')} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div><span style={{ fontWeight: 'bold', display: 'block' }}>Dark Mode</span><span style={{ fontSize: '13px', color: '#666' }}>Switch to a darker theme.</span></div>
+              <ToggleSwitch checked={accessSettings.darkMode} onChange={() => toggleSetting('darkMode')} />
             </div>
           </div>
         </section>
