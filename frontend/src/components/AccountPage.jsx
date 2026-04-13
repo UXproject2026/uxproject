@@ -2,6 +2,26 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 /**
+ * Internal reusable component for accessibility toggles.
+ */
+const ToggleSwitch = ({ checked, onChange }) => (
+  <label className="switch" style={{ position: 'relative', display: 'inline-block', width: '50px', height: '24px' }}>
+    <input type="checkbox" checked={checked} onChange={onChange} style={{ opacity: 0, width: 0, height: 0 }} />
+    <span style={{
+      position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0,
+      backgroundColor: checked ? 'var(--primary-lavender)' : '#ccc',
+      transition: '.4s', borderRadius: '24px'
+    }}>
+      <span style={{
+        position: 'absolute', content: '""', height: '18px', width: '18px', left: '3px', bottom: '3px',
+        backgroundColor: 'white', transition: '.4s', borderRadius: '50%',
+        transform: checked ? 'translateX(26px)' : 'translateX(0)'
+      }}></span>
+    </span>
+  </label>
+);
+
+/**
  * AccountPage Component
  * Manages user profile, saved payment methods, purchase history, and accessibility settings.
  */
@@ -135,26 +155,6 @@ const AccountPage = () => {
     navigate('/signin');
     window.location.reload();
   };
-
-  /**
-   * Internal reusable component for accessibility toggles.
-   */
-  const ToggleSwitch = ({ checked, onChange }) => (
-    <label className="switch" style={{ position: 'relative', display: 'inline-block', width: '50px', height: '24px' }}>
-      <input type="checkbox" checked={checked} onChange={onChange} style={{ opacity: 0, width: 0, height: 0 }} />
-      <span style={{
-        position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0,
-        backgroundColor: checked ? 'var(--primary-lavender)' : '#ccc',
-        transition: '.4s', borderRadius: '24px'
-      }}>
-        <span style={{
-          position: 'absolute', content: '""', height: '18px', width: '18px', left: '3px', bottom: '3px',
-          backgroundColor: 'white', transition: '.4s', borderRadius: '50%',
-          transform: checked ? 'translateX(26px)' : 'translateX(0)'
-        }}></span>
-      </span>
-    </label>
-  );
 
   return (
     <div className="account-page" style={{ padding: '20px' }}>

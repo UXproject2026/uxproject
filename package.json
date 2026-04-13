@@ -1,0 +1,17 @@
+{
+  "name": "uxproject-root",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "install-frontend": "npm install --prefix frontend",
+    "install-backend": "pip install -r backend/requirements.txt",
+    "install-all": "npm run install-frontend && npm run install-backend",
+    "dev": "npm run dev --prefix frontend",
+    "start-backend": "python backend/app.py",
+    "start-all": "concurrently \"npm run dev\" \"npm run start-backend\"",
+    "postinstall": "npm run install-frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

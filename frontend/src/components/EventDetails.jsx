@@ -3,17 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 
 /**
  * EventDetails Component: Displays detailed information about a specific show
- * and handles the ticket selection process (Reserved Seating or General Admission).
+ * and handles the ticket selection process.
  */
 const EventDetails = () => {
   const { eventId } = useParams();
   const navigate = useNavigate();
 
-  // STATE MANAGEMENT:
-  // - event: Basic event info (title, venue, etc.)
-  // - selectedSeats: Array of seat objects currently chosen by the user
-  // - planData: The seating map structure (areas and seat coordinates)
-  // - gaCount: Simple counter for General Admission tickets
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedSeats, setSelectedSeats] = useState([]);
@@ -21,10 +16,6 @@ const EventDetails = () => {
   const [loadingPlan, setLoadingPlan] = useState(true);
   const [gaCount, setGaCount] = useState(0);
 
-  /**
-   * API FETCHING:
-   * Fetches event details and then triggers seating plan retrieval.
-   */
   useEffect(() => {
     fetch(`/api/events/${eventId}`)
       .then(res => res.json())
@@ -43,15 +34,6 @@ const EventDetails = () => {
       });
   }, [eventId]);
 
-  /**
-   * SEATING PLAN LOGIC:
-   * Fetches the geometric data for the venue.
-   * 
-   * COORDINATE CALCULATION & SVG MAPPING:
-   * To display the SVG map correctly, we must calculate the bounding box ('viewBox')
-   * of the seats in each area. This ensures the map is zoomed appropriately to fit 
-   * the actual seats, regardless of their absolute coordinates in the venue database.
-   */
   const fetchSeatingPlan = (id) => {
     fetch(`/api/events/${id}/seating-plan`)
       .then(res => res.json())
@@ -65,23 +47,24 @@ const EventDetails = () => {
         const processedAreas = data.areas?.map(area => {
           let minX = 10000, minY = 10000, maxX = 0, maxY = 0;
           let hasSeats = false;
+          const scale = 8.0; // Dramatic increase in spacing factor
 
-          // Iterate through seats to find the boundaries of the area
           area.seats?.forEach(seat => {
             hasSeats = true;
-            if (seat.x < minX) minX = seat.x;
-            if (seat.y < minY) minY = seat.y;
-            if (seat.x > maxX) maxX = seat.x;
-            if (seat.y > maxY) maxY = seat.y;
+            const sx = seat.x * scale;
+            const sy = seat.y * scale;
+            if (sx < minX) minX = sx;
+            if (sy < minY) minY = sy;
+            if (sx > maxX) maxX = sx;
+            if (sy > maxY) maxY = sy;
           });
 
-          // Apply padding so seats aren't cut off by the SVG edge
-          const padding = 30;
-          const topPadding = 80;
+          const padding = 300; // Large padding for massive elements
+          const topPadding = 400;
           return {
             ...area,
             hasSeats,
-            // Calculate dynamic viewBox: "startX startY width height"
+            scale,
             viewBox: hasSeats ? `${minX - padding} ${minY - topPadding} ${(maxX - minX) + padding * 2} ${(maxY - minY) + topPadding + padding}` : null
           };
         }) || [];
@@ -95,10 +78,6 @@ const EventDetails = () => {
       });
   };
 
-  /**
-   * SELECTION LOGIC:
-   * Toggles a seat in the selectedSeats array.
-   */
   const toggleSeat = (seat) => {
     const seatId = seat.id;
     if (selectedSeats.find(s => s.id === seatId)) {
@@ -112,11 +91,6 @@ const EventDetails = () => {
       setSelectedSeats(prev => [...prev, seatWithUniqueName]);    }
   };
 
-  /**
-   * GENERAL ADMISSION LOGIC:
-   * For non-reserved shows, we simply track a count.
-   * To reuse the 'selectedSeats' footer logic, we create mock seat objects.
-   */
   const handleGaChange = (amount) => {
     const newCount = Math.max(0, gaCount + amount);
     setGaCount(newCount);
@@ -137,8 +111,6 @@ const EventDetails = () => {
       alert('Please select at least one ticket');
       return;
     }
-    // NAVIGATION WITH STATE:
-    // Passes the selection to the payment page via React Router's state object.
     navigate('/payment', { 
       state: { 
         event, 
@@ -165,106 +137,77 @@ const EventDetails = () => {
       });
   };
 
-  if (loading) return <div className="loading">Loading event details...</div>;
+  if (loading) return <div className="loading" style={{ padding: '100px', textAlign: 'center', fontSize: '24px' }}>Loading show details...</div>;
   if (!event) return <div className="error">Event not found!</div>;
 
-  // Determine if this is a reserved seating event based on plan data
   const isReserved = planData && planData.areas?.some(a => a.hasSeats);
 
   return (
     <div className="event-details-page">
-      <header className="page-header">
-        <button className="back-btn" onClick={() => navigate(-1)}>&lt; Back</button>
-        <h2>Event Details</h2>
+      <header className="page-header" style={{ marginBottom: '30px' }}>
+        <button className="back-btn" onClick={() => navigate(-1)} style={{ fontSize: '18px', fontWeight: 'bold' }}>&lt; Back</button>
+        <h2 style={{ fontSize: '32px', fontWeight: '800' }}>Book Tickets</h2>
       </header>
       
       <div className="event-detail-content">
-        <img src={event.image} alt={event.title} className="detail-image" />
-        <div className="detail-header-info">
-          <h2 className="detail-title">{event.title}</h2>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <span className="detail-category">{event.category}</span>
+        <div style={{ position: 'relative' }}>
+           <img src={event.image} alt={event.title} className="detail-image" style={{ height: '400px' }} />
+           <div style={{ position: 'absolute', bottom: '30px', left: '30px', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.8)' }}>
+             <h2 style={{ fontSize: '48px', margin: 0 }}>{event.title}</h2>
+             <p style={{ fontSize: '22px', margin: 0, fontWeight: '600' }}>{event.venue}</p>
+           </div>
+        </div>
+
+        <div className="detail-header-info" style={{ marginTop: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            <span className="detail-category" style={{ fontSize: '14px', padding: '6px 15px' }}>{event.category}</span>
             <div className="rating-display" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ color: '#FFD700', fontSize: '20px' }}>
+              <span style={{ color: '#FFD700', fontSize: '28px' }}>
                 {'★'.repeat(Math.round(event.rating || 0))}{'☆'.repeat(5 - Math.round(event.rating || 0))}
               </span>
-              <span style={{ fontWeight: 'bold' }}>{event.rating || '0.0'}</span>
-              <span style={{ color: 'var(--text-muted)', fontSize: '14px' }}>({event.ratingCount || 0} reviews)</span>
+              <span style={{ fontWeight: '800', fontSize: '20px' }}>{event.rating || '0.0'}</span>
             </div>
-          </div>
-
-          <div className="rate-this" style={{ marginTop: '20px', padding: '15px', background: 'var(--bg-subtle)', borderRadius: 'var(--radius-md)', display: 'inline-block' }}>
-            <span style={{ fontSize: '14px', fontWeight: '700', marginRight: '10px' }}>Rate this show:</span>
-            {[1, 2, 3, 4, 5].map((star) => (
-              <button
-                key={star}
-                onClick={() => handleRate(star)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: '#FFD700', padding: '0 2px' }}
-                title={`Rate ${star} stars`}
-              >
-                ☆
-              </button>
-            ))}
           </div>
         </div>
         
-        <div className="detail-info">
+        <div className="detail-info" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', padding: '30px' }}>
           <div className="info-item">
-            <span className="icon">📍</span>
-            <span>{event.venue}</span>
+            <span style={{ fontSize: '32px' }}>📍</span>
+            <span style={{ fontSize: '18px', fontWeight: '800' }}>{event.venue}</span>
           </div>
           <div className="info-item">
-            <span className="icon">📅</span>
-            <span>{event.date} • {event.time}</span>
+            <span style={{ fontSize: '32px' }}>📅</span>
+            <span style={{ fontSize: '18px', fontWeight: '800' }}>{event.date} • {event.time}</span>
           </div>
           <div className="info-item">
-            <span className="icon">💰</span>
-            <span>£{event.price.toFixed(2)} per ticket</span>
+            <span style={{ fontSize: '32px' }}>💰</span>
+            <span style={{ fontSize: '18px', fontWeight: '800' }}>£{event.price.toFixed(2)}</span>
           </div>
         </div>
 
-        <div className="event-description-section">
-          <h3>About the Show</h3>
-          <div 
-            className="detail-description" 
-            dangerouslySetInnerHTML={{ __html: event.description }}
-          />
-        </div>
-
-        <div className="seat-selection-section">
-          <h3>Tickets</h3>
+        <div className="seat-selection-section" style={{ padding: '40px', border: '2px solid var(--primary-lavender)', background: '#fdfdfd' }}>
+          <h3 style={{ fontSize: '30px', marginBottom: '10px' }}>Select Your Seats</h3>
+          <p style={{ textAlign: 'center', fontSize: '18px', color: '#666', marginBottom: '40px' }}>
+            Tap the large circles to pick your seats. We've made them extra large and spaced them out for easier selection.
+          </p>
           
           {loadingPlan ? (
-            <div className="loading-plan" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-               Checking ticket availability...
-            </div>
+            <div style={{ textAlign: 'center', padding: '40px', fontSize: '20px' }}>Checking seat availability...</div>
           ) : isReserved ? (
-            /* RESERVED SEATING UI: Iterates through SVG areas */
             <div className="multi-area-plan">
-              <p style={{ textAlign: 'center', color: 'var(--text-muted)', marginBottom: '30px' }}>Select your seats from the map below:</p>
               {planData.areas.filter(a => a.hasSeats).map((area) => (
-                <div key={area.id} className="plan-area-container" style={{ marginBottom: '40px' }}>
-                  <h4 style={{ textAlign: 'center', marginBottom: '15px', fontWeight: '700' }}>{area.name}</h4>
-                  <div className="svg-wrapper" style={{ background: 'var(--bg-subtle)', borderRadius: 'var(--radius-md)', padding: '20px', border: '1px solid var(--border-subtle)' }}>
-                    {/* SVG RENDERER: Uses dynamic viewBox for auto-scaling */}
-                    <svg viewBox={area.viewBox} width="100%" height="auto" style={{ maxHeight: '400px', display: 'block' }}>
-                      {/* STAGE INDICATOR: Positioned at the top of each area's view */}
+                <div key={area.id} className="plan-area-container" style={{ marginBottom: '60px' }}>
+                  <h4 style={{ fontSize: '24px', textAlign: 'center', marginBottom: '20px', color: 'var(--accent-purple)' }}>{area.name}</h4>
+                  <div className="svg-wrapper" style={{ background: '#eee', borderRadius: '20px', padding: '30px', border: '1px solid #ccc' }}>
+                    <svg viewBox={area.viewBox} width="100%" height="auto" style={{ maxHeight: '800px', display: 'block' }}>
                       {(() => {
                         const vb = area.viewBox.split(' ').map(Number);
                         const centerX = vb[0] + vb[2] / 2;
-                        const topY = vb[1] + 10;
+                        const topY = vb[1] + 25;
                         return (
                           <g className="stage-indicator">
-                            <rect 
-                              x={centerX - 100} y={topY} width="200" height="40" rx="4"
-                              fill="var(--border-medium)" opacity="0.2"
-                            />
-                            <text 
-                              x={centerX} y={topY + 25} textAnchor="middle" 
-                              className="stage-label"
-                            >
-                              STAGE
-                            </text>
+                            <rect x={centerX - 200} y={topY} width="400" height="80" rx="12" fill="var(--accent-purple)" />
+                            <text x={centerX} y={topY + 52} textAnchor="middle" fill="white" style={{ fontWeight: '800', fontSize: '32px' }}>STAGE</text>
                           </g>
                         );
                       })()}
@@ -272,11 +215,22 @@ const EventDetails = () => {
                         const isSelected = selectedSeats.find(s => s.id === seat.id);
                         return (
                           <circle
-                            key={seat.id} cx={seat.x} cy={seat.y} r="10"
-                            fill={isSelected ? 'var(--primary-lavender)' : '#fff'}
+                            key={seat.id} cx={seat.x * area.scale} cy={seat.y * area.scale} r="60"
+                            fill={isSelected ? 'var(--accent-purple)' : '#fff'}
                             stroke={isSelected ? '#fff' : 'var(--primary-lavender)'}
-                            strokeWidth="2" style={{ cursor: 'pointer', transition: 'all 0.2s' }}
+                            strokeWidth="8" 
+                            style={{ cursor: 'pointer', transition: 'all 0.2s', outline: 'none' }}
+                            role="button"
+                            tabIndex="0"
+                            aria-label={`${seat.row ? `Row ${seat.row}, ` : ''}Seat ${seat.number || seat.name}${isSelected ? ', selected' : ''}`}
+                            aria-pressed={isSelected}
                             onClick={() => toggleSeat(seat)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                toggleSeat(seat);
+                              }
+                            }}
                           />
                         );
                       })}
@@ -286,69 +240,50 @@ const EventDetails = () => {
               ))}
             </div>
           ) : (
-            /* GENERAL ADMISSION UI: Simple quantity selector */
-            <div className="ga-selection" style={{ 
-              textAlign: 'center', 
-              padding: '60px', 
-              background: 'var(--bg-subtle)', 
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid var(--border-medium)'
-            }}>
-              <h4 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '12px' }}>General Admission</h4>
-              <p style={{ color: 'var(--text-muted)', marginBottom: '32px' }}>This event has unreserved seating. Please select the number of tickets you require.</p>
+            <div className="ga-selection" style={{ padding: '80px', background: 'var(--bg-subtle)', borderRadius: '25px' }}>
+              <h4 style={{ fontSize: '28px', fontWeight: '800', marginBottom: '20px' }}>General Admission</h4>
+              <p style={{ fontSize: '20px', marginBottom: '40px' }}>Select the number of people attending:</p>
               
-              <div className="quantity-selector" style={{ 
-                display: 'inline-flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                gap: '32px',
-                background: 'white',
-                padding: '12px 24px',
-                borderRadius: 'var(--radius-full)',
-                boxShadow: 'var(--shadow-sm)',
-                border: '1px solid var(--border-medium)'
-              }}>
+              <div className="quantity-selector" style={{ gap: '40px', padding: '20px 40px', background: 'white', borderRadius: '50px', border: '2px solid var(--border-medium)' }}>
                 <button 
                   onClick={() => handleGaChange(-1)}
-                  style={{ width: '44px', height: '44px', borderRadius: '50%', border: '1px solid var(--border-medium)', background: '#fff', fontSize: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  style={{ width: '60px', height: '60px', fontSize: '30px', fontWeight: 'bold' }}
+                  aria-label="Remove 1 person"
                 >-</button>
-                <span style={{ fontSize: '28px', fontWeight: '800', minWidth: '40px', color: 'var(--accent-purple)' }}>{gaCount}</span>
+                <span style={{ fontSize: '48px', fontWeight: '900', color: 'var(--accent-purple)' }} aria-live="polite">{gaCount}</span>
                 <button 
                   onClick={() => handleGaChange(1)}
-                  style={{ width: '44px', height: '44px', borderRadius: '50%', border: '1px solid var(--border-medium)', background: '#fff', fontSize: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  style={{ width: '60px', height: '60px', fontSize: '30px', fontWeight: 'bold' }}
+                  aria-label="Add 1 person"
                 >+</button>
               </div>
             </div>
           )}
 
           {isReserved && (
-            <div className="seat-legend" style={{ marginTop: '32px', display: 'flex', justifyContent: 'center', gap: '32px' }}>
-              <div className="legend-item" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: '500', color: 'var(--text-muted)' }}>
-                <span className="seat-sample" style={{ width: '12px', height: '12px', display: 'inline-block', border: '2px solid var(--primary-lavender)', background: '#fff', borderRadius: '50%' }}></span> Available
+            <div className="seat-legend" style={{ marginTop: '40px', gap: '50px', display: 'flex', justifyContent: 'center' }}>
+              <div className="legend-item" style={{ fontSize: '24px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '15px' }}>
+                <span style={{ width: '50px', height: '50px', border: '6px solid var(--primary-lavender)', background: '#fff', borderRadius: '50%', display: 'inline-block' }}></span> Available
               </div>
-              <div className="legend-item" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: '500', color: 'var(--text-muted)' }}>
-                <span className="seat-sample selected" style={{ width: '12px', height: '12px', display: 'inline-block', background: 'var(--primary-lavender)', borderRadius: '50%' }}></span> Selected
+              <div className="legend-item" style={{ fontSize: '24px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '15px' }}>
+                <span style={{ width: '50px', height: '50px', background: 'var(--accent-purple)', borderRadius: '50%', display: 'inline-block' }}></span> Selected
               </div>
             </div>
           )}
         </div>
         
-        {/* 
-          STICKY FOOTER:
-          Provides immediate feedback on selection and a clear call-to-action.
-          Remains fixed at the bottom of the viewport for easy access.
-        */}
-        <div className="sticky-footer">
+        <div className="sticky-footer" style={{ padding: '30px 45px', bottom: '30px', borderRadius: '30px' }}>
           <div className="selection-summary">
-            <span>{selectedSeats.length} {selectedSeats.length === 1 ? 'Ticket' : 'Tickets'} Selected</span>
-            <span className="total-price">£{(selectedSeats.length * event.price).toFixed(2)}</span>
+            <span style={{ fontSize: '18px', fontWeight: '700' }}>{selectedSeats.length} People Selected</span>
+            <span className="total-price" style={{ fontSize: '36px' }}>£{(selectedSeats.length * event.price).toFixed(2)}</span>
           </div>
           <button 
             className={`continue-btn ${selectedSeats.length === 0 ? 'disabled' : ''}`} 
             onClick={handleContinue}
             disabled={selectedSeats.length === 0}
+            style={{ padding: '20px 50px', fontSize: '22px' }}
           >
-            Continue to Payment &rarr;
+            Confirm & Pay &rarr;
           </button>
         </div>
       </div>
