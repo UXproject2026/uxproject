@@ -54,6 +54,7 @@ const Home = () => {
       }
       
       return date.getTime();
+    // eslint-disable-next-line no-unused-vars
     } catch (e) {
       return Infinity;
     }
