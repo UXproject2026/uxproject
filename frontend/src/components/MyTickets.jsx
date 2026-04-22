@@ -171,25 +171,38 @@ const SeatingPlanPopup = ({ eventId, bookedSeats, onClose }) => {
             <svg viewBox={area.viewBox} width="100%" height="auto" style={{ display: 'block', maxHeight: '600px' }}>
               {area.seats?.map(seat => {
                 const isBooked = isMatchRender(seat, normalizedBooked);
+                const isAccessible = seat.isWheelchairSpace || seat.isAccessible || seat.attributes?.IsWheelchairSpace || seat.row === 'A';
+
                 return (
-                  <circle
-                    key={seat.id} cx={seat.x * area.scale} cy={seat.y * area.scale} r="60"
-                    fill={isBooked ? 'var(--accent-purple)' : '#fff'}
-                    stroke={isBooked ? '#fff' : 'var(--primary-lavender)'}
-                    strokeWidth="8"
-                    role="img"
-                    aria-label={`${seat.row ? `Row ${seat.row}, ` : ''}Seat ${seat.number || seat.name}${isBooked ? ' - YOUR SEAT' : ''}`}
-                  />
+                  <g key={seat.id}>
+                    <circle
+                      cx={seat.x * area.scale} cy={seat.y * area.scale} r="80"
+                      fill={isBooked ? 'var(--accent-purple)' : '#fff'}
+                      stroke={isAccessible ? '#2ecc71' : (isBooked ? '#fff' : 'var(--primary-lavender)')}
+                      strokeWidth={isAccessible ? "12" : "8"}
+                      role="img"
+                      aria-label={`${isAccessible ? 'Accessible ' : ''}${seat.row ? `Row ${seat.row}, ` : ''}Seat ${seat.number || seat.name}${isBooked ? ' - YOUR SEAT' : ''}`}
+                    />
+                    {isAccessible && !isBooked && (
+                      <text 
+                        x={seat.x * area.scale} y={seat.y * area.scale + 25} 
+                        textAnchor="middle" style={{ pointerEvents: 'none', fontSize: '80px', fill: '#2ecc71' }}
+                      >♿</text>
+                    )}
+                  </g>
                 );
               })}
             </svg>
           </div>
-          <div className="plan-legend-mini" style={{ display: 'flex', justifyContent: 'center', gap: '30px', marginTop: '20px' }}>
+          <div className="plan-legend-mini" style={{ display: 'flex', justifyContent: 'center', gap: '30px', marginTop: '20px', flexWrap: 'wrap' }}>
             <span className="legend-item" style={{ display: 'flex', alignItems: 'center', gap: '15px', fontSize: '24px', fontWeight: '800' }}>
               <span className="dot" style={{ width: '50px', height: '50px', background: 'var(--accent-purple)', borderRadius: '50%' }}></span> Your Seat
             </span>
             <span className="legend-item" style={{ display: 'flex', alignItems: 'center', gap: '15px', fontSize: '24px', fontWeight: '800' }}>
               <span className="dot" style={{ width: '50px', height: '50px', background: '#fff', border: '6px solid var(--primary-lavender)', borderRadius: '50%' }}></span> Other Seats
+            </span>
+            <span className="legend-item" style={{ display: 'flex', alignItems: 'center', gap: '15px', fontSize: '24px', fontWeight: '800' }}>
+              <span className="dot" style={{ width: '50px', height: '50px', border: '6px solid #2ecc71', background: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>♿</span> Accessible
             </span>
           </div>
         </div>

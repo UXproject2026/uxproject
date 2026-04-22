@@ -14,7 +14,8 @@ const EventDetails = () => {
   const [selectedSeats, setSelectedSeats] = useState([]);
   const [planData, setPlanData] = useState(null);
   const [loadingPlan, setLoadingPlan] = useState(true);
-  const [gaCount, setGaCount] = useState(0);
+  const [gaCounts, setGaCounts] = useState({ standard: 0, disabled: 0, carer: 0 });
+  const [activeSeat, setActiveSeat] = useState(null);
 
   useEffect(() => {
     fetch(`/api/events/${eventId}`)
@@ -83,27 +84,65 @@ const EventDetails = () => {
     if (selectedSeats.find(s => s.id === seatId)) {
       setSelectedSeats(prev => prev.filter(s => s.id !== seatId));
     } else {
-      const seatIdentifier = seat.row 
-        ? `Row ${seat.row}, Seat ${seat.number || seat.name}`
-        : (seat.name.includes('Seat') ? seat.name : `Seat ${seat.name}`);
-
-      const seatWithUniqueName = { ...seat, name: seatIdentifier };
-      setSelectedSeats(prev => [...prev, seatWithUniqueName]);    }
+      setActiveSeat(seat);
+    }
   };
 
-  const handleGaChange = (amount) => {
-    const newCount = Math.max(0, gaCount + amount);
-    setGaCount(newCount);
+  const handleTypeSelect = (type, price) => {
+    if (!activeSeat) return;
     
-    if (newCount === 0) {
-      setSelectedSeats([]);
-    } else {
-      const mockSeats = Array.from({length: newCount}, (_, i) => ({
-        id: `ga-${i}`,
-        name: `General Admission ${i + 1}`
-      }));
-      setSelectedSeats(mockSeats);
+    const seatIdentifier = activeSeat.row 
+      ? `Row ${activeSeat.row}, Seat ${activeSeat.number || activeSeat.name}`
+      : (activeSeat.name.includes('Seat') ? activeSeat.name : `Seat ${activeSeat.name}`);
+
+    const seatWithDetails = { 
+      ...activeSeat, 
+      name: seatIdentifier, 
+      ticketType: type,
+      price: price
+    };
+    
+    setSelectedSeats(prev => [...prev, seatWithDetails]);
+    setActiveSeat(null);
+  };
+
+  const handleGaChange = (type, amount) => {
+    const newCounts = { ...gaCounts, [type]: Math.max(0, gaCounts[type] + amount) };
+    setGaCounts(newCounts);
+    
+    const newSelectedSeats = [];
+    
+    // Add Standard tickets
+    for (let i = 0; i < newCounts.standard; i++) {
+      newSelectedSeats.push({
+        id: `ga-standard-${i}`,
+        name: `Standard Entry ${i + 1}`,
+        ticketType: 'Standard',
+        price: event.price
+      });
     }
+    
+    // Add Disabled tickets
+    for (let i = 0; i < newCounts.disabled; i++) {
+      newSelectedSeats.push({
+        id: `ga-disabled-${i}`,
+        name: `Disabled Entry ${i + 1}`,
+        ticketType: 'Disabled',
+        price: event.price
+      });
+    }
+    
+    // Add Carer tickets
+    for (let i = 0; i < newCounts.carer; i++) {
+      newSelectedSeats.push({
+        id: `ga-carer-${i}`,
+        name: `Carer Entry ${i + 1}`,
+        ticketType: 'Carer',
+        price: 0
+      });
+    }
+    
+    setSelectedSeats(newSelectedSeats);
   };
 
   const handleContinue = () => {
@@ -115,7 +154,7 @@ const EventDetails = () => {
       state: { 
         event, 
         ticketCount: selectedSeats.length, 
-        seats: selectedSeats.map(s => s.name) 
+        selectedSeats // Pass the full objects now
       } 
     });
   };
@@ -213,25 +252,35 @@ const EventDetails = () => {
                       })()}
                       {area.seats?.map(seat => {
                         const isSelected = selectedSeats.find(s => s.id === seat.id);
+                        const isAccessible = seat.isWheelchairSpace || seat.isAccessible || seat.attributes?.IsWheelchairSpace || seat.row === 'A';
+                        
                         return (
-                          <circle
-                            key={seat.id} cx={seat.x * area.scale} cy={seat.y * area.scale} r="60"
-                            fill={isSelected ? 'var(--accent-purple)' : '#fff'}
-                            stroke={isSelected ? '#fff' : 'var(--primary-lavender)'}
-                            strokeWidth="8" 
-                            style={{ cursor: 'pointer', transition: 'all 0.2s', outline: 'none' }}
-                            role="button"
-                            tabIndex="0"
-                            aria-label={`${seat.row ? `Row ${seat.row}, ` : ''}Seat ${seat.number || seat.name}${isSelected ? ', selected' : ''}`}
-                            aria-pressed={isSelected}
-                            onClick={() => toggleSeat(seat)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault();
-                                toggleSeat(seat);
-                              }
-                            }}
-                          />
+                          <g key={seat.id}>
+                            <circle
+                              cx={seat.x * area.scale} cy={seat.y * area.scale} r="80"
+                              fill={isSelected ? 'var(--accent-purple)' : '#fff'}
+                              stroke={isAccessible ? '#2ecc71' : (isSelected ? '#fff' : 'var(--primary-lavender)')}
+                              strokeWidth={isAccessible ? "12" : "8"} 
+                              style={{ cursor: 'pointer', transition: 'all 0.2s', outline: 'none' }}
+                              role="button"
+                              tabIndex="0"
+                              aria-label={`${isAccessible ? 'Accessible ' : ''}${seat.row ? `Row ${seat.row}, ` : ''}Seat ${seat.number || seat.name}${isSelected ? ', selected' : ''}`}
+                              aria-pressed={isSelected}
+                              onClick={() => toggleSeat(seat)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  toggleSeat(seat);
+                                }
+                              }}
+                            />
+                            {isAccessible && !isSelected && (
+                              <text 
+                                x={seat.x * area.scale} y={seat.y * area.scale + 25} 
+                                textAnchor="middle" style={{ pointerEvents: 'none', fontSize: '80px', fill: '#2ecc71' }}
+                              >♿</text>
+                            )}
+                          </g>
                         );
                       })}
                     </svg>
@@ -240,33 +289,119 @@ const EventDetails = () => {
               ))}
             </div>
           ) : (
-            <div className="ga-selection" style={{ padding: '80px', background: 'var(--bg-subtle)', borderRadius: '25px' }}>
-              <h4 style={{ fontSize: '28px', fontWeight: '800', marginBottom: '20px' }}>General Admission</h4>
-              <p style={{ fontSize: '20px', marginBottom: '40px' }}>Select the number of people attending:</p>
+            <div className="ga-selection" style={{ padding: '40px 20px', background: 'var(--bg-subtle)', borderRadius: '25px' }}>
+              <h4 style={{ fontSize: '28px', fontWeight: '800', marginBottom: '30px', textAlign: 'center' }}>General Admission</h4>
               
-              <div className="quantity-selector" style={{ gap: '40px', padding: '20px 40px', background: 'white', borderRadius: '50px', border: '2px solid var(--border-medium)' }}>
-                <button 
-                  onClick={() => handleGaChange(-1)}
-                  style={{ width: '60px', height: '60px', fontSize: '30px', fontWeight: 'bold' }}
-                  aria-label="Remove 1 person"
-                >-</button>
-                <span style={{ fontSize: '48px', fontWeight: '900', color: 'var(--accent-purple)' }} aria-live="polite">{gaCount}</span>
-                <button 
-                  onClick={() => handleGaChange(1)}
-                  style={{ width: '60px', height: '60px', fontSize: '30px', fontWeight: 'bold' }}
-                  aria-label="Add 1 person"
-                >+</button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {/* Standard Counter */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px', background: 'white', borderRadius: '20px', border: '1px solid #ddd' }}>
+                  <div>
+                    <span style={{ fontSize: '20px', fontWeight: '800', display: 'block' }}>Standard Ticket</span>
+                    <span style={{ fontSize: '16px', color: '#666' }}>£{event.price.toFixed(2)} per person</span>
+                  </div>
+                  <div className="quantity-selector" style={{ gap: '20px' }}>
+                    <button 
+                      onClick={() => handleGaChange('standard', -1)}
+                      style={{ width: '45px', height: '45px', fontSize: '24px' }}
+                    >-</button>
+                    <span style={{ fontSize: '32px', minWidth: '40px', textAlign: 'center' }}>{gaCounts.standard}</span>
+                    <button 
+                      onClick={() => handleGaChange('standard', 1)}
+                      style={{ width: '45px', height: '45px', fontSize: '24px' }}
+                    >+</button>
+                  </div>
+                </div>
+
+                {/* Disabled Counter */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px', background: 'white', borderRadius: '20px', border: '1px solid #2ecc71' }}>
+                  <div>
+                    <span style={{ fontSize: '20px', fontWeight: '800', display: 'block' }}>Disabled Ticket ♿</span>
+                    <span style={{ fontSize: '16px', color: '#666' }}>£{event.price.toFixed(2)} per person</span>
+                  </div>
+                  <div className="quantity-selector" style={{ gap: '20px' }}>
+                    <button 
+                      onClick={() => handleGaChange('disabled', -1)}
+                      style={{ width: '45px', height: '45px', fontSize: '24px' }}
+                    >-</button>
+                    <span style={{ fontSize: '32px', minWidth: '40px', textAlign: 'center' }}>{gaCounts.disabled}</span>
+                    <button 
+                      onClick={() => handleGaChange('disabled', 1)}
+                      style={{ width: '45px', height: '45px', fontSize: '24px' }}
+                    >+</button>
+                  </div>
+                </div>
+
+                {/* Carer Counter */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px', background: 'var(--soft-lavender)', borderRadius: '20px', border: '1px solid var(--primary-lavender)' }}>
+                  <div>
+                    <span style={{ fontSize: '20px', fontWeight: '800', display: 'block' }}>Carer Ticket</span>
+                    <span style={{ fontSize: '16px', color: '#666' }}>£0.00 (Free)</span>
+                  </div>
+                  <div className="quantity-selector" style={{ gap: '20px' }}>
+                    <button 
+                      onClick={() => handleGaChange('carer', -1)}
+                      style={{ width: '45px', height: '45px', fontSize: '24px' }}
+                    >-</button>
+                    <span style={{ fontSize: '32px', minWidth: '40px', textAlign: 'center' }}>{gaCounts.carer}</span>
+                    <button 
+                      onClick={() => handleGaChange('carer', 1)}
+                      style={{ width: '45px', height: '45px', fontSize: '24px' }}
+                    >+</button>
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
           {isReserved && (
-            <div className="seat-legend" style={{ marginTop: '40px', gap: '50px', display: 'flex', justifyContent: 'center' }}>
+            <div className="seat-legend" style={{ marginTop: '40px', gap: '50px', display: 'flex', justifyContent: 'center', flexWrap: 'wrap' }}>
               <div className="legend-item" style={{ fontSize: '24px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '15px' }}>
                 <span style={{ width: '50px', height: '50px', border: '6px solid var(--primary-lavender)', background: '#fff', borderRadius: '50%', display: 'inline-block' }}></span> Available
               </div>
               <div className="legend-item" style={{ fontSize: '24px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '15px' }}>
                 <span style={{ width: '50px', height: '50px', background: 'var(--accent-purple)', borderRadius: '50%', display: 'inline-block' }}></span> Selected
+              </div>
+              <div className="legend-item" style={{ fontSize: '24px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '15px' }}>
+                <span style={{ width: '50px', height: '50px', border: '6px solid #2ecc71', background: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>♿</span> Accessible
+              </div>
+            </div>
+          )}
+
+          {/* Ticket Type Selection Popup */}
+          {activeSeat && (
+            <div className="type-popup-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+              <div className="type-popup" style={{ background: 'white', padding: '40px', borderRadius: '30px', maxWidth: '500px', width: '90%', textAlign: 'center' }}>
+                <h4 style={{ fontSize: '28px', marginBottom: '10px' }}>Select Ticket Type</h4>
+                <p style={{ fontSize: '18px', color: '#666', marginBottom: '30px' }}>
+                  {activeSeat.row ? `Row ${activeSeat.row}, Seat ${activeSeat.number || activeSeat.name}` : activeSeat.name}
+                </p>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                  <button 
+                    onClick={() => handleTypeSelect('Standard', event.price)}
+                    style={{ padding: '15px', borderRadius: '15px', border: '2px solid #ddd', fontSize: '20px', fontWeight: 'bold', cursor: 'pointer' }}
+                  >
+                    Standard Ticket - £{event.price.toFixed(2)}
+                  </button>
+                  <button 
+                    onClick={() => handleTypeSelect('Disabled', event.price)}
+                    style={{ padding: '15px', borderRadius: '15px', border: '2px solid #2ecc71', fontSize: '20px', fontWeight: 'bold', cursor: 'pointer' }}
+                  >
+                    Disabled Ticket - £{event.price.toFixed(2)}
+                  </button>
+                  <button 
+                    onClick={() => handleTypeSelect('Carer', 0)}
+                    style={{ padding: '15px', borderRadius: '15px', border: '2px solid var(--accent-purple)', fontSize: '20px', fontWeight: 'bold', cursor: 'pointer', background: 'var(--soft-lavender)' }}
+                  >
+                    Carer Ticket - £0.00
+                  </button>
+                  <button 
+                    onClick={() => setActiveSeat(null)}
+                    style={{ marginTop: '10px', background: 'none', border: 'none', color: '#666', textDecoration: 'underline', cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -274,8 +409,8 @@ const EventDetails = () => {
         
         <div className="sticky-footer" style={{ padding: '30px 45px', bottom: '30px', borderRadius: '30px' }}>
           <div className="selection-summary">
-            <span style={{ fontSize: '18px', fontWeight: '700' }}>{selectedSeats.length} People Selected</span>
-            <span className="total-price" style={{ fontSize: '36px' }}>£{(selectedSeats.length * event.price).toFixed(2)}</span>
+            <span style={{ fontSize: '18px', fontWeight: '700' }}>{selectedSeats.length} {selectedSeats.length === 1 ? 'Ticket' : 'Tickets'} Selected</span>
+            <span className="total-price" style={{ fontSize: '36px' }}>£{selectedSeats.reduce((acc, s) => acc + s.price, 0).toFixed(2)}</span>
           </div>
           <button 
             className={`continue-btn ${selectedSeats.length === 0 ? 'disabled' : ''}`} 

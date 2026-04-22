@@ -94,24 +94,14 @@ const Home = () => {
   const getFeaturedEvents = (category, count = 4) => {
     const filtered = events.filter(e => e.category === category);
     
-    // Sort all filtered events by date first (soonest first)
-    const sortedByDate = [...filtered].sort((a, b) => {
-      const dateA = parseEventDate(a.date, a.time);
-      const dateB = parseEventDate(b.date, b.time);
-      return dateA - dateB;
+    // Sort all filtered events by newest first (by MongoDB _id)
+    const sortedByNewest = [...filtered].sort((a, b) => {
+      if (a._id > b._id) return -1;
+      if (a._id < b._id) return 1;
+      return 0;
     });
     
-    // Separate into those with and without real images (keeping their date order)
-    const withImages = sortedByDate.filter(e => e.hasRealImage);
-    const withoutImages = sortedByDate.filter(e => !e.hasRealImage);
-    
-    // Combine lists, prioritizing those with images
-    if (withImages.length >= count) {
-      return withImages.slice(0, count);
-    }
-    
-    const remaining = count - withImages.length;
-    return [...withImages, ...withoutImages.slice(0, remaining)];
+    return sortedByNewest.slice(0, count);
   };
 
   return (

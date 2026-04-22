@@ -10,11 +10,12 @@ const PaymentPage = () => {
   // Retrieves booking data (event, count, seats) passed from the EventDetails page
   const { state } = useLocation();
   const navigate = useNavigate();
-  const { event, ticketCount, seats } = state || {};
+  const { event, ticketCount, selectedSeats } = state || {};
 
   // --- Local State ---
   // Tracks if the payment API call is currently in progress
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isEligibleConfirmed, setIsEligibleConfirmed] = useState(false);
   // Stores temporary card details (not persisted for security)
   const [cardDetails, setCardDetails] = useState({
     name: '',
@@ -23,8 +24,12 @@ const PaymentPage = () => {
     cvc: ''
   });
 
-  // Calculate total based on event price and number of tickets
-  const totalAmount = event ? (event.price * ticketCount).toFixed(2) : '0.00';
+  // Calculate total based on individual seat prices
+  const totalAmount = selectedSeats 
+    ? selectedSeats.reduce((acc, s) => acc + s.price, 0).toFixed(2) 
+    : '0.00';
+
+  const hasSpecialTickets = selectedSeats?.some(s => s.ticketType === 'Disabled' || s.ticketType === 'Carer');
 
   /**
    * Universal change handler for form inputs.
@@ -40,6 +45,12 @@ const PaymentPage = () => {
    */
   const handlePayNow = (e) => {
     e.preventDefault();
+    
+    if (hasSpecialTickets && !isEligibleConfirmed) {
+      alert('Please confirm your eligibility for special ticket types.');
+      return;
+    }
+
     setIsProcessing(true);
 
     // Simulate network latency for a "realistic" payment feel
@@ -51,7 +62,9 @@ const PaymentPage = () => {
           eventId: event._id, 
           ticketCount, 
           totalAmount,
-          seat: seats ? seats.join(', ') : 'Row B, Seat 12' // Default if not selected
+          seat: selectedSeats 
+            ? selectedSeats.map(s => `${s.name} (${s.ticketType})`).join(', ') 
+            : 'General Admission'
         })
       })
       .then(res => res.json())
@@ -94,7 +107,14 @@ const PaymentPage = () => {
           <div className="venue-name">{event.venue}</div>
           <div className="info-item">📅 {event.date}</div>
           <div className="info-item">🕒 {event.time}</div>
-          <div className="info-item">👥 {ticketCount} Tickets ({seats?.join(', ')})</div>
+          <div className="info-item">
+            👥 {ticketCount} Tickets
+            <ul style={{ margin: '10px 0 0 20px', fontSize: '14px', color: '#666' }}>
+              {selectedSeats?.map((s, i) => (
+                <li key={i}>{s.name} ({s.ticketType}) - £{s.price.toFixed(2)}</li>
+              ))}
+            </ul>
+          </div>
           <hr />
           <div className="total-row">
             <span>Total Amount</span>
@@ -106,6 +126,23 @@ const PaymentPage = () => {
       {/* Payment Form: Mimics a secure credit card entry */}
       <form className="payment-form" onSubmit={handlePayNow}>
         <h3>CARD DETAILS</h3>
+        
+        {hasSpecialTickets && (
+          <div className="eligibility-box" style={{ padding: '15px', background: 'var(--soft-lavender)', borderRadius: '12px', marginBottom: '20px', border: '1px solid var(--primary-lavender)' }}>
+            <label style={{ display: 'flex', gap: '12px', cursor: 'pointer', alignItems: 'flex-start' }}>
+              <input 
+                type="checkbox" 
+                checked={isEligibleConfirmed} 
+                onChange={(e) => setIsEligibleConfirmed(e.target.checked)}
+                style={{ marginTop: '4px', width: '20px', height: '20px' }}
+              />
+              <span style={{ fontSize: '14px', lineHeight: '1.4' }}>
+                <strong>I confirm my eligibility:</strong> I understand that I must provide valid proof of eligibility for Carer or Disabled tickets at the venue (e.g., Access Card, Blue Badge, or PIP letter).
+              </span>
+            </label>
+          </div>
+        )}
+
         <div className="form-group">
           <label>Name on Card</label>
           <input 

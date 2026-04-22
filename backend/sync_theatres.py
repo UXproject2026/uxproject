@@ -32,10 +32,37 @@ VENUES_CONFIG = {
 # --- DATA TRANSFORMATION: KNOWLEDGE BASE ---
 # Load a researched 'Knowledge Base' to provide high-quality descriptions for known shows.
 KB_PATH = os.path.join(os.path.dirname(__file__), 'descriptions_kb.json')
+IMG_KB_PATH = os.path.join(os.path.dirname(__file__), 'images_kb.json')
+
 KNOWLEDGE_BASE = {}
 if os.path.exists(KB_PATH):
     with open(KB_PATH, 'r') as f:
         KNOWLEDGE_BASE = json.load(f)
+
+IMG_KNOWLEDGE_BASE = {}
+if os.path.exists(IMG_KB_PATH):
+    with open(IMG_KB_PATH, 'r') as f:
+        IMG_KNOWLEDGE_BASE = json.load(f)
+
+def get_smart_image(title, category, api_image):
+    """
+    Returns a high-quality image URL for a given event.
+    Prioritizes: 1. Manual mapping, 2. API provided image, 3. Category-specific fallback.
+    """
+    if title in IMG_KNOWLEDGE_BASE:
+        return IMG_KNOWLEDGE_BASE[title]
+    
+    if api_image:
+        return api_image
+        
+    # Category-specific fallbacks (high-quality Unsplash search results)
+    fallbacks = {
+        'Opera': "https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?q=80&w=800&auto=format&fit=crop",
+        'Ballet': "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=800&auto=format&fit=crop",
+        'Live Music': "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?q=80&w=800&auto=format&fit=crop"
+    }
+    
+    return fallbacks.get(category, "https://images.unsplash.com/photo-1514525253344-9914f2e7dd36?q=80&w=800&auto=format&fit=crop")
 
 def build_smart_description(ev, venue_name, category):
     """
@@ -150,6 +177,9 @@ def sync_theatre_data():
                         api_desc = None
                     
                     final_desc = api_desc or build_smart_description(ev, venue_name, category)
+                    
+                    # Image selection: Prioritize knowledge base, then API, then category fallbacks
+                    smart_image = get_smart_image(ev.get('name'), category, ev.get('imageUrl'))
 
                     # Create a flat schema optimized for the React frontend
                     mapped_event = {
@@ -158,8 +188,8 @@ def sync_theatre_data():
                         "description": final_desc,
                         "date": display_date,
                         "time": display_time,
-                        "image": ev.get('imageUrl') or "https://images.unsplash.com/photo-1514525253344-9914f2e7dd36?q=80&w=500&auto=format&fit=crop",
-                        "hasRealImage": bool(ev.get('imageUrl')),
+                        "image": smart_image,
+                        "hasRealImage": bool(ev.get('imageUrl') or ev.get('name') in IMG_KNOWLEDGE_BASE),
                         "category": category,
                         "price": 25.00,
                         "externalId": ev.get('id'),

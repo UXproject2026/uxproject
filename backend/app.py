@@ -63,8 +63,8 @@ def get_events():
         query = {}
         if category and category != 'All':
             query['category'] = category
-        # Return all events matching the query so filters on frontend work correctly
-        events = list(events_collection.find(query))
+        # Return all events matching the query, sorted by newest first
+        events = list(events_collection.find(query).sort('_id', -1))
         return jsonify([serialize_doc(event) for event in events])
     except Exception as e:
         return jsonify({"error": str(e)}), 500

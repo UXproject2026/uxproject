@@ -78,15 +78,16 @@ const SearchPage = () => {
     fetch('/api/events')
       .then(res => res.json())
       .then(data => {
-        // Sort: Items with real photos first, then by date chronological
+        // Sort: Newest first (by MongoDB _id), then items with real photos
         const sortedData = [...data].sort((a, b) => {
-          if (a.hasRealImage && !b.hasRealImage) return -1;
-          if (!a.hasRealImage && b.hasRealImage) return 1;
+          // Compare MongoDB IDs (string comparison works for chronological order of creation)
+          if (a._id > b._id) return -1;
+          if (a._id < b._id) return 1;
           
+          // Fallback to date if somehow same ID
           const dateA = parseEventDate(a.date, a.time);
           const dateB = parseEventDate(b.date, b.time);
-          if (dateA !== dateB) return dateA - dateB;
-          return 0;
+          return dateA - dateB;
         });
 
         setAllEvents(sortedData);
